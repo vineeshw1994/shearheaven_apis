@@ -1,0 +1,19 @@
+{
+  "ClientId": "",
+  "RegionId": "",
+  "StoreId": "",
+  "breeds": [
+    { "id": 1, "name": "Labrador Retriever", "category": "Sporting" },
+    { "id": 2, "name": "Golden Retriever", "category": "Sporting" },
+    { "id": 3, "name": "German Shepherd", "category": "Herding" },
+    { "id": 4, "name": "French Bulldog", "category": "Non-Sporting" },
+    { "id": 5, "name": "Poodle", "category": "Non-Sporting" },
+    { "id": 6, "name": "Beagle", "category": "Hound" },
+    { "id": 7, "name": "Yorkshire Terrier", "category": "Toy" },
+    { "id": 8, "name": "Dachshund", "category": "Hound" },
+    { "id": 9, "name": "Boxer", "category": "Working" },
+    { "id": 10, "name": "Shih Tzu", "category": "Toy" },
+    { "id": 11, "name": "Mixed Breed", "category": "Mixed" },
+    { "id": 12, "name": "Other", "category": "Other" }
+  ]
+}

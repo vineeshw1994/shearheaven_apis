@@ -1,0 +1,429 @@
+{
+  "info": {
+    "_postman_id": "shear-heaven-api-collection",
+    "name": "Shear Heaven API",
+    "description": "Complete Postman collection for the Shear Heaven Node.js + TypeScript REST API.\n\n**Setup:**\n1. Import this collection into Postman.\n2. Set the `baseUrl` variable (default: `http://localhost:5000`).\n3. Run **Login** or **Verify OTP** — tokens are saved automatically to collection variables.\n4. Authenticated requests use `{{accessToken}}` via Bearer auth.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" },
+    { "key": "refreshToken", "value": "", "type": "string" },
+    { "key": "petId", "value": "1", "type": "string" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the server is running."
+          }
+        },
+        {
+          "name": "Swagger Docs",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-docs"]
+            },
+            "description": "Open Swagger UI in browser."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"mobile\": \"9876543210\",\n  \"password\": \"Password@123\",\n  \"confirmPassword\": \"Password@123\",\n  \"clientId\": \"\",\n  \"regionId\": \"\",\n  \"storeId\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Step 1: Submit signup details. Sends OTP to email — user is NOT registered yet. Complete registration with Verify OTP."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with email and password. Saves accessToken and refreshToken to collection variables."
+          }
+        },
+        {
+          "name": "Send OTP",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"clientId\": \"\",\n  \"regionId\": \"\",\n  \"storeId\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/send-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "send-otp"]
+            },
+            "description": "Send a 6-digit OTP to the user's email. Rate limited to 3 requests per 15 minutes."
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "    }",
+                  "    if (json.data && json.data.refreshToken) {",
+                  "        pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"otp\": \"482731\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/verify-otp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "verify-otp"]
+            },
+            "description": "Step 2: Verify OTP to complete registration. Creates the user and returns the same response as Login (accessToken, refreshToken, user)."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.accessToken) {",
+                  "        pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "refresh-token"]
+            },
+            "description": "Generate a new access token using a valid refresh token."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout and revoke refresh token. Requires Bearer access token."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data APIs",
+      "auth": { "type": "noauth" },
+      "item": [
+        {
+          "name": "Get Groomers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomers"]
+            },
+            "description": "Returns groomers and bathers with ClientID, RegionId, StoreId."
+          }
+        },
+        {
+          "name": "Get Holidays",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/holidays",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "holidays"]
+            },
+            "description": "Returns HolidayList with holiday details."
+          }
+        },
+        {
+          "name": "Get Service Hours",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/service-hours",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "service-hours"]
+            },
+            "description": "Returns store service hours (HolidayList array)."
+          }
+        },
+        {
+          "name": "Get Service & Packages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/service-packages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "service-packages"]
+            },
+            "description": "Returns Breeds, Packages, AddOns, and Walk In Services."
+          }
+        },
+        {
+          "name": "Get Breeds",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/breeds",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "breeds"]
+            },
+            "description": "Returns breed list from breeds.json."
+          }
+        },
+        {
+          "name": "Get Pet Weights",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/pet-weights",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pet-weights"]
+            },
+            "description": "Returns pet weight ranges from pet-weights.json."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pets",
+      "description": "All pet APIs require Bearer token: Authorization: Bearer {{accessToken}}",
+      "item": [
+        {
+          "name": "Create Pet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    if (json.data && json.data.pet && json.data.pet.id) {",
+                  "        pm.collectionVariables.set('petId', json.data.pet.id);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "profilePicture", "type": "file", "src": [], "description": "Required. JPEG, PNG, or WebP (max 5MB)" },
+                { "key": "petName", "value": "Buddy", "type": "text" },
+                { "key": "breed", "value": "Golden Retriever", "type": "text" },
+                { "key": "weight", "value": "Large", "type": "text" },
+                { "key": "age", "value": "2", "type": "text" },
+                { "key": "dateOfBirth", "value": "2024-03-10", "type": "text" },
+                { "key": "gender", "value": "male", "type": "text" },
+                { "key": "notesAllergies", "value": "Chicken allergy", "type": "text" },
+                { "key": "allVaccinatedCurrent", "value": "true", "type": "text" },
+                { "key": "lastVaccinatedDate", "value": "2025-08-01", "type": "text" },
+                { "key": "behaviorNotes", "value": "Energetic", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pets",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pets"]
+            },
+            "description": "Create pet with profile picture (multipart/form-data). Requires Bearer token."
+          }
+        },
+        {
+          "name": "Get All Pets (by user)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pets",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pets"]
+            },
+            "description": "Returns pets for the authenticated user only. Response includes userId and pets array."
+          }
+        },
+        {
+          "name": "Get Pet by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pets/{{petId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pets", "{{petId}}"]
+            },
+            "description": "Get single pet. User can only access their own pets."
+          }
+        },
+        {
+          "name": "Update Pet",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "profilePicture", "type": "file", "src": [], "description": "Required. JPEG, PNG, or WebP (max 5MB)" },
+                { "key": "petName", "value": "Buddy Updated", "type": "text" },
+                { "key": "breed", "value": "Golden Retriever", "type": "text" },
+                { "key": "weight", "value": "Large", "type": "text" },
+                { "key": "age", "value": "3", "type": "text" },
+                { "key": "gender", "value": "male", "type": "text" },
+                { "key": "allVaccinatedCurrent", "value": "true", "type": "text" },
+                { "key": "behaviorNotes", "value": "Very friendly", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/pets/{{petId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pets", "{{petId}}"]
+            },
+            "description": "Update pet with profile picture (multipart/form-data). Requires Bearer token."
+          }
+        },
+        {
+          "name": "Delete Pet",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}", "type": "text" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/pets/{{petId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "pets", "{{petId}}"]
+            },
+            "description": "Delete pet. User can only delete their own pets."
+          }
+        }
+      ]
+    }
+  ]
+}

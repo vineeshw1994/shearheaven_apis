@@ -1,0 +1,94 @@
+[
+{"Sumday" :  {"Open": "No", "Start": "", "End" : ""}},
+{"Monday" :  {"Open": "No", "Start": "", "End" : ""}},
+{"Tueday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+{"Wednesday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+{"Thursday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+{"Friday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+{"Saturday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}}
+] 
+
+
+
+[
+{"Groomer": {"FirstName" : "Merisa", "LastName" : "Brown", "Role": "Lead Groomer", "Highlights": "Best lead groomer in town"},
+{"Groomer": {"FirstName" : "Richard", "LastName" : "Cooke", "Role": "Senior Groomer", "Highlights": "Best groomer in town, got award in 2025!"},
+{"Bather": {"FirstName" : "Jeremiah", "LastName" : "Smirth", "Role": "Junio Bather", "Highlights": "I am the best Bather"},
+]
+
+
+
+[
+{"Independence Day" : "07/04/2026", "Description" : "Day of Independence"},
+{"Easter" : "05/10/2026", "Description" : "Easter Sunday"},
+{"Thanks giving day" : "11/25/2026", "Description" : "Thanks giving day"}
+]
+
+
+
+I forgot to tell you one thing. All these payload must be associated to a ClientId, RegionId and StoreId. 
+Please add these three ids in the root node of this payload, outside the arrayList. in all payload for now. 
+{
+{“ClientId”:””,
+“RegionId”:””,
+ “StoreId“:””},
+[
+{"Independence Day" : "07/04/2026", "Description" : "Day of Independence"},
+{"Easter" : "05/10/2026", "Description" : "Easter Sunday"},
+{"Thanks giving day" : "11/25/2026", "Description" : "Thanks giving day"}
+]}
+
+
+
+[12:14 am, 9/8/2026] Jino Sir US: In the MySQL table we must store these three columns in all table for now. I will explain the reason for this plan.
+[12:17 am, 9/8/2026] Jino Sir US: ================================================
+{
+	{“ClientId”:””,
+	“RegionId”:””,
+	 “StoreId“:””},
+	[
+	{"Sumday" :  {"Open": "No", "Start": "", "End" : ""}},
+	{"Monday" :  {"Open": "No", "Start": "", "End" : ""}},
+	{"Tueday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+	{"Wednesday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+	{"Thursday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+	{"Friday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}},
+	{"Saturday" :  {"Open": "Yes", "Start": "08:00", "End" : "05:30"}}
+	]
+}
+
+==============================================
+{
+	{
+	“ClientId”:””,
+	“RegionId”:””,
+	“StoreId“:””
+	},
+	[
+	{"Groomer": {"FirstName" : "Merisa", "LastName" : "Brown", "Role": "Lead Groomer", "Highlights": "Best lead groomer in town"}},
+	{"Groomer": {"FirstName" : "Richard", "LastName" : "Cooke", "Role": "Senior Groomer", "Highlights": "Best groomer in town, got award in 2025!"}},
+	{"Bather": {"FirstName" : "Jeremiah", "LastName" : "Smirth", "Role": "Junio Bather", "Highlights": "I am the best Bather"}}
+	]
+}
+
+{ 
+{“ClientId”:””,
+“RegionId”:””,
+ “StoreId“:””},
+[
+{"Independence Day" : "07/04/2026", "Description" : "Day of Independence"},
+{"Easter" : "05/10/2026", "Description" : "Easter Sunday"},
+{"Thanks giving day" : "11/25/2026", "Description" : "Thanks giving day"}
+]
+}
+
+{
+{“ClientId”:””,
+“RegionId”:””,
+ “StoreId“:””},
+[
+{"Independence Day" : "07/04/2026", "Description" : "Day of Independence"},
+{"Easter" : "05/10/2026", "Description" : "Easter Sunday"},
+{"Thanks giving day" : "11/25/2026", "Description" : "Thanks giving day"}
+]}
+================================================
