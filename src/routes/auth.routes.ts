@@ -63,7 +63,35 @@ router.post('/login', validate(loginSchema), authController.login);
  * /api/auth/refresh-token:
  *   post:
  *     tags: [Auth]
- *     summary: Refresh access token
+ *     summary: Refresh access token using refresh token
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [refreshToken]
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *                 description: Valid refresh token from login or verify-otp
+ *     responses:
+ *       200:
+ *         description: New access token generated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
  */
 router.post('/refresh-token', validate(refreshTokenSchema), authController.refreshToken);
 

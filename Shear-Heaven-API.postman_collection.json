@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "shear-heaven-api-collection",
     "name": "Shear Heaven API",
-    "description": "Complete Postman collection for the Shear Heaven Node.js + TypeScript REST API.\n\n**Setup:**\n1. Import this collection into Postman.\n2. Set the `baseUrl` variable (default: `http://localhost:5000`).\n3. Run **Login** or **Verify OTP** — tokens are saved automatically to collection variables.\n4. Authenticated requests use `{{accessToken}}` via Bearer auth.",
+    "description": "Complete Postman collection for the Shear Heaven Node.js + TypeScript REST API.\n\n**Setup:**\n1. Import this collection into Postman.\n2. Set the `baseUrl` variable (default: `http://localhost:5000`).\n3. Run **Login** or **Verify OTP** — tokens are saved automatically to collection variables.\n4. When access token expires (1 day), run **Refresh Access Token** to get a new one.\n5. Authenticated requests use `{{accessToken}}` via Bearer auth.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -163,7 +163,7 @@
           }
         },
         {
-          "name": "Refresh Token",
+          "name": "Refresh Access Token",
           "event": [
             {
               "listen": "test",
@@ -173,6 +173,7 @@
                   "    const json = pm.response.json();",
                   "    if (json.data && json.data.accessToken) {",
                   "        pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "        console.log('New access token saved to collection variable accessToken');",
                   "    }",
                   "}"
                 ],
@@ -193,7 +194,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "refresh-token"]
             },
-            "description": "Generate a new access token using a valid refresh token."
+            "description": "Exchange a valid refresh token for a new access token.\n\n**Prerequisite:** Run Login or Verify OTP first so `{{refreshToken}}` is set.\n\n**Request:**\n```json\n{\n  \"refreshToken\": \"{{refreshToken}}\"\n}\n```\n\n**Response:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Access token refreshed successfully\",\n  \"data\": {\n    \"accessToken\": \"...\"\n  }\n}\n```\n\nThe new access token is saved automatically to `{{accessToken}}`."
           }
         },
         {

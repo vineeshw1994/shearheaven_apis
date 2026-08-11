@@ -14,7 +14,7 @@ const optionalWithDefaults: Record<string, string> = {
   DB_NAME: 'shear_heaven',
   DB_USER: 'root',
   DB_PASSWORD: '',
-  JWT_ACCESS_EXPIRES_IN: '15m',
+  JWT_ACCESS_EXPIRES_IN: '1d',
   JWT_REFRESH_EXPIRES_IN: '7d',
   SMTP_HOST: 'smtp.gmail.com',
   SMTP_PORT: '465',
