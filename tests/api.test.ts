@@ -380,3 +380,137 @@ describe('JSON Data APIs', () => {
     expect(res.body.data.petWeights.length).toBeGreaterThan(0);
   });
 });
+
+describe('Booking and Availability APIs', () => {
+  let accessToken: string;
+  let petId: number;
+  const testImagePath = `${__dirname}/fixtures/test-pet.png`;
+
+  beforeAll(async () => {
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: testUser.email, password: testUser.password });
+    accessToken = loginRes.body.data.accessToken;
+
+    const petRes = await request(app)
+      .post('/api/pets')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .field('petName', 'Booking Pet')
+      .field('breed', 'Beagle')
+      .field('weight', 'Small')
+      .attach('profilePicture', testImagePath);
+
+    petId = petRes.body.data.pet.id;
+  });
+
+  it('should reject availability without token', async () => {
+    const res = await request(app).post('/api/availability').send({
+      date: '2026-08-20',
+      serviceId: 12,
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('should return available slots for an open day', async () => {
+    const res = await request(app)
+      .post('/api/availability')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        ClientId: 'SHEAR-001',
+        RegionId: 'DWG-001',
+        StoreId: 'SHEAR-001',
+        date: '2026-08-20',
+        serviceId: 12,
+        packageId: 1,
+        addOnIds: [2, 3],
+        groomerId: 3,
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.workingHours).toBeDefined();
+    expect(res.body.data.totalDurationMinutes).toBeGreaterThan(0);
+    expect(Array.isArray(res.body.data.availableSlots)).toBe(true);
+    expect(Array.isArray(res.body.data.bookedSlots)).toBe(true);
+  });
+
+  it('should create a booking', async () => {
+    const availabilityRes = await request(app)
+      .post('/api/availability')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        date: '2026-08-20',
+        serviceId: 1,
+        addOnIds: [],
+        groomerId: 1,
+      });
+
+    const slot = availabilityRes.body.data.availableSlots[0];
+    expect(slot).toBeDefined();
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        ClientId: 'SHEAR-001',
+        RegionId: 'DWG-001',
+        StoreId: 'SHEAR-001',
+        petId,
+        serviceId: 1,
+        packageId: null,
+        addOnIds: [],
+        groomerId: 1,
+        bookingDate: '2026-08-20',
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      });
+
+    expect(res.status).toBe(201);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.bookingId).toBeDefined();
+    expect(res.body.data.status).toBe('confirmed');
+    expect(res.body.data.totalDurationMinutes).toBeDefined();
+    expect(res.body.data.totalPrice).toBeDefined();
+  });
+
+  it('should reject overlapping bookings', async () => {
+    const first = await request(app)
+      .post('/api/availability')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        date: '2026-08-21',
+        serviceId: 1,
+        addOnIds: [],
+        groomerId: 1,
+      });
+
+    const slot = first.body.data.availableSlots[0];
+
+    await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        petId,
+        serviceId: 1,
+        addOnIds: [],
+        groomerId: 1,
+        bookingDate: '2026-08-21',
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      });
+
+    const res = await request(app)
+      .post('/api/bookings')
+      .set('Authorization', `Bearer ${accessToken}`)
+      .send({
+        petId,
+        serviceId: 1,
+        addOnIds: [],
+        groomerId: 1,
+        bookingDate: '2026-08-21',
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      });
+
+    expect(res.status).toBe(409);
+  });
+});

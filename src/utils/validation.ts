@@ -72,6 +72,52 @@ export const petUpdateSchema = petSchema.fork(
   (schema) => schema.optional()
 );
 
+const bookingTenantSchema = {
+  ClientId: Joi.string().max(50).allow('').optional(),
+  RegionId: Joi.string().max(50).allow('').optional(),
+  StoreId: Joi.string().max(50).allow('').optional(),
+  clientId: Joi.string().max(50).allow('').optional(),
+  regionId: Joi.string().max(50).allow('').optional(),
+  storeId: Joi.string().max(50).allow('').optional(),
+};
+
+const timeSchema = Joi.string()
+  .pattern(/^([01]\d|2[0-3]):[0-5]\d$/)
+  .messages({
+    'string.pattern.base': 'Time must be in HH:MM 24-hour format',
+  });
+
+export const createBookingSchema = Joi.object({
+  petId: Joi.number().integer().positive().required(),
+  serviceId: Joi.number().integer().positive().required(),
+  packageId: Joi.number().integer().positive().allow(null).optional(),
+  addOnIds: Joi.array().items(Joi.number().integer().positive()).default([]),
+  groomerId: Joi.number().integer().min(0).required(),
+  bookingDate: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'bookingDate must be in YYYY-MM-DD format',
+    }),
+  startTime: timeSchema.required(),
+  endTime: timeSchema.required(),
+  ...bookingTenantSchema,
+});
+
+export const availabilitySchema = Joi.object({
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'date must be in YYYY-MM-DD format',
+    }),
+  serviceId: Joi.number().integer().positive().required(),
+  packageId: Joi.number().integer().positive().allow(null).optional(),
+  addOnIds: Joi.array().items(Joi.number().integer().positive()).default([]),
+  groomerId: Joi.number().integer().min(0).allow(null).optional(),
+  ...bookingTenantSchema,
+});
+
 function coerceFormValue(value: unknown): unknown {
   if (value === '' || value === 'null' || value === 'undefined') {
     return null;

@@ -130,6 +130,7 @@ http://localhost:5000/api-docs
 | GET | `/api/service-hours` | Get service hours |
 | GET | `/api/breeds` | Get breeds |
 | GET | `/api/pet-weights` | Get pet weight ranges |
+| GET | `/api/service-packages` | Get services, packages, and add-ons |
 
 ### Pets (Authenticated)
 
@@ -142,6 +143,15 @@ http://localhost:5000/api-docs
 | DELETE | `/api/pets/:id` | Delete pet |
 
 Pet profile pictures are uploaded via `multipart/form-data` with field name `profilePicture`.
+
+### Bookings (Authenticated)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/availability` | Get groomer working hours and available slots |
+| POST | `/api/bookings` | Create a booking |
+
+Prices and durations are taken from `src/data/service&packages.json`. `endTime` must equal `startTime` plus the calculated duration.
 
 ## Testing
 
