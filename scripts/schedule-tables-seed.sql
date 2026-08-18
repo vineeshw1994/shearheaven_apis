@@ -118,70 +118,60 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- ---------------------------------------------------------------------------
 -- SAMPLE DATA (from groomers.json + holidays.json)
--- Skip if tables already have data
+-- Run only if tables are empty. If inserts fail with duplicate key, data already exists.
 -- ---------------------------------------------------------------------------
 
 INSERT INTO `groomers` (`groomerCode`, `firstName`, `lastName`, `role`, `highlights`, `type`, `isActive`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
-SELECT * FROM (
-  SELECT 'G001', 'Merisa', 'Brown', 'Lead Groomer', 'Best lead groomer in town', 'Groomer', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'G002', 'Richard', 'Cooke', 'Senior Groomer', 'Best groomer in town, got award in 2025!', 'Groomer', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'B001', 'Jeremiah', 'Smith', 'Junio Bather', 'I am the best Bather', 'Bather', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()
-) AS seed
-WHERE NOT EXISTS (SELECT 1 FROM `groomers` LIMIT 1);
+VALUES
+  ('G001', 'Merisa', 'Brown', 'Lead Groomer', 'Best lead groomer in town', 'Groomer', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Richard', 'Cooke', 'Senior Groomer', 'Best groomer in town, got award in 2025!', 'Groomer', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Jeremiah', 'Smith', 'Junio Bather', 'I am the best Bather', 'Bather', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
 
 INSERT INTO `holiday_list` (`holidayCode`, `name`, `date`, `description`, `isStoreSpecific`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
-SELECT * FROM (
-  SELECT 'H001', 'Independence Day', '2026-07-04', 'Day of Independence', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'H002', 'Easter', '2026-04-28', 'Day of Independence', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'H003', 'Thanks giving day', '2026-11-25', 'Day of Independence', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'H004', 'Christmas Day', '2026-12-25', 'Christmas Day', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'H005', 'Store Maintenance', '2026-08-21', 'Store-specific closure for equipment maintenance', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()
-) AS seed
-WHERE NOT EXISTS (SELECT 1 FROM `holiday_list` LIMIT 1);
+VALUES
+  ('H001', 'Independence Day', '2026-07-04', 'Day of Independence', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('H002', 'Easter', '2026-04-28', 'Day of Independence', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('H003', 'Thanks giving day', '2026-11-25', 'Day of Independence', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('H004', 'Christmas Day', '2026-12-25', 'Christmas Day', 0, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('H005', 'Store Maintenance', '2026-08-21', 'Store-specific closure for equipment maintenance', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
 
 INSERT INTO `store_operational_hours` (`dayOfWeek`, `isOpen`, `startTime`, `endTime`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
-SELECT * FROM (
-  SELECT 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()
-) AS seed
-WHERE NOT EXISTS (SELECT 1 FROM `store_operational_hours` LIMIT 1);
+VALUES
+  ('Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
 
 -- Groomer working hours (assumes groomer ids 1=G001, 2=G002, 3=B001)
 INSERT INTO `groomer_working_hours` (`groomerId`, `dayOfWeek`, `isWorking`, `startTime`, `endTime`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
-SELECT * FROM (
-  SELECT 1, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 1, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 1, 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 1, 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 1, 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 1, 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 1, 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, 'Tuesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, 'Wednesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, 'Thursday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, 'Friday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, 'Saturday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()
-) AS seed
-WHERE NOT EXISTS (SELECT 1 FROM `groomer_working_hours` LIMIT 1);
+VALUES
+  (1, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (1, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (1, 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (1, 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (1, 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (1, 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (1, 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, 'Tuesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, 'Wednesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, 'Thursday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, 'Friday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, 'Saturday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
 
 INSERT INTO `groomer_unavailability` (`groomerId`, `startDate`, `endDate`, `startTime`, `endTime`, `reason`, `leaveType`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
-SELECT * FROM (
-  SELECT 1, '2026-08-19', '2026-08-19', '12:00', '13:00', 'Lunch break', 'break', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 2, '2026-08-20', '2026-08-20', '', '', 'Personal leave', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW() UNION ALL
-  SELECT 3, '2026-09-01', '2026-09-03', '', '', 'Vacation', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()
-) AS seed
-WHERE NOT EXISTS (SELECT 1 FROM `groomer_unavailability` LIMIT 1);
+VALUES
+  (1, '2026-08-19', '2026-08-19', '12:00', '13:00', 'Lunch break', 'break', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (2, '2026-08-20', '2026-08-20', '', '', 'Personal leave', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  (3, '2026-09-01', '2026-09-03', '', '', 'Vacation', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
