@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shear Heaven Admin</title>
+  <link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Shear Heaven Admin</h1>
+      <p>Edit store holidays, hours, groomer schedules, and unavailability</p>
+    </div>
+    <div class="tenant-filters">
+      <label>ClientID <input id="filterClientId" value="SHEAR-001" /></label>
+      <label>RegionId <input id="filterRegionId" value="DWG-001" /></label>
+      <label>StoreId <input id="filterStoreId" value="SHEAR-001" /></label>
+      <button id="reloadBtn" type="button">Reload</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs"></nav>
+
+  <main>
+    <section class="toolbar">
+      <h2 id="tableTitle">Groomers</h2>
+      <button id="addBtn" type="button">Add row</button>
+    </section>
+    <div class="table-wrap">
+      <table>
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <p id="status" class="status"></p>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-card">
+      <h3 id="modalTitle">Add row</h3>
+      <form id="editForm"></form>
+      <div class="modal-actions">
+        <button id="cancelBtn" type="button" class="secondary">Cancel</button>
+        <button id="saveBtn" type="submit" form="editForm">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>

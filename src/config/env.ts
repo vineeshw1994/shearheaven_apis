@@ -22,6 +22,7 @@ const optionalWithDefaults: Record<string, string> = {
   SMTP_PASSWORD: '',
   SMTP_FROM_NAME: 'Shear Heaven',
   NODE_ENV: 'development',
+  BASE_URL: 'http://localhost:5000',
 };
 
 export const env = {
@@ -52,6 +53,8 @@ export const env = {
     password: process.env.SMTP_PASSWORD || optionalWithDefaults.SMTP_PASSWORD,
     fromName: process.env.SMTP_FROM_NAME || optionalWithDefaults.SMTP_FROM_NAME,
   },
+
+  baseUrl: (process.env.BASE_URL || optionalWithDefaults.BASE_URL).replace(/\/$/, ''),
 };
 
 export function validateEnv(): void {
