@@ -78,8 +78,12 @@ Groomer.init(
     tableName: 'groomers',
     timestamps: true,
     indexes: [
-      { unique: true, fields: ['groomerCode', 'clientId', 'regionId', 'storeId'] },
-      { fields: ['clientId', 'regionId', 'storeId'] },
+      {
+        unique: true,
+        name: 'groomers_code_tenant_unique',
+        fields: ['groomerCode', 'clientId', 'regionId', 'storeId'],
+      },
+      { name: 'groomers_tenant', fields: ['clientId', 'regionId', 'storeId'] },
     ],
   }
 );

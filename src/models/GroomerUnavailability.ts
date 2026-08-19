@@ -81,9 +81,9 @@ GroomerUnavailability.init(
     tableName: 'groomer_unavailability',
     timestamps: true,
     indexes: [
-      { fields: ['groomerCode'] },
-      { fields: ['startDate', 'endDate'] },
-      { fields: ['clientId', 'regionId', 'storeId'] },
+      { name: 'gunavail_groomer_code', fields: ['groomerCode'] },
+      { name: 'gunavail_dates', fields: ['startDate', 'endDate'] },
+      { name: 'gunavail_tenant', fields: ['clientId', 'regionId', 'storeId'] },
     ],
   }
 );

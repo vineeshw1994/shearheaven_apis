@@ -65,8 +65,12 @@ StoreOperationalHour.init(
     tableName: 'store_operational_hours',
     timestamps: true,
     indexes: [
-      { unique: true, fields: ['dayOfWeek', 'clientId', 'regionId', 'storeId'] },
-      { fields: ['clientId', 'regionId', 'storeId'] },
+      {
+        unique: true,
+        name: 'soh_day_tenant_unique',
+        fields: ['dayOfWeek', 'clientId', 'regionId', 'storeId'],
+      },
+      { name: 'soh_tenant', fields: ['clientId', 'regionId', 'storeId'] },
     ],
   }
 );

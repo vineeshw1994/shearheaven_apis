@@ -1,5 +1,5 @@
 -- Shear Heaven - Update existing production tables
--- Use this if tables were already created with groomerId.
+-- Safe to re-run. Drops ALL groomerId indexes before dropping the column.
 -- Run: mysql -u root -p shear_heaven < scripts/schedule-tables-update.sql
 
 USE shear_heaven;
@@ -56,6 +56,61 @@ VALUES ('DWG-001', 'SHEAR-001', 'Darwin', 1, NOW(), NOW());
 INSERT IGNORE INTO `store_master` (`storeId`, `clientId`, `regionId`, `name`, `isActive`, `createdAt`, `updatedAt`)
 VALUES ('SHEAR-001', 'SHEAR-001', 'DWG-001', 'Shear Heaven Darwin', 1, NOW(), NOW());
 
+DROP PROCEDURE IF EXISTS `drop_column_indexes`;
+DELIMITER $$
+CREATE PROCEDURE `drop_column_indexes`(IN p_table VARCHAR(64), IN p_column VARCHAR(64))
+BEGIN
+  DECLARE done INT DEFAULT 0;
+  DECLARE idx_name VARCHAR(64);
+  DECLARE fk_name VARCHAR(64);
+
+  DECLARE fk_cur CURSOR FOR
+    SELECT DISTINCT CONSTRAINT_NAME
+    FROM information_schema.KEY_COLUMN_USAGE
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = p_table
+      AND COLUMN_NAME = p_column
+      AND REFERENCED_TABLE_NAME IS NOT NULL;
+
+  DECLARE idx_cur CURSOR FOR
+    SELECT DISTINCT INDEX_NAME
+    FROM information_schema.STATISTICS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = p_table
+      AND COLUMN_NAME = p_column
+      AND INDEX_NAME <> 'PRIMARY';
+
+  DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+  OPEN fk_cur;
+  fk_loop: LOOP
+    FETCH fk_cur INTO fk_name;
+    IF done = 1 THEN
+      LEAVE fk_loop;
+    END IF;
+    SET @sql = CONCAT('ALTER TABLE `', p_table, '` DROP FOREIGN KEY `', fk_name, '`');
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END LOOP;
+  CLOSE fk_cur;
+
+  SET done = 0;
+  OPEN idx_cur;
+  idx_loop: LOOP
+    FETCH idx_cur INTO idx_name;
+    IF done = 1 THEN
+      LEAVE idx_loop;
+    END IF;
+    SET @sql = CONCAT('ALTER TABLE `', p_table, '` DROP INDEX `', idx_name, '`');
+    PREPARE stmt FROM @sql;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+  END LOOP;
+  CLOSE idx_cur;
+END$$
+DELIMITER ;
+
 -- ---------------------------------------------------------------------------
 -- 2. Switch groomer_working_hours from groomerId to groomerCode
 -- ---------------------------------------------------------------------------
@@ -68,34 +123,22 @@ SET @has_groomer_code := (
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'groomer_working_hours' AND COLUMN_NAME = 'groomerCode'
 );
 
-SET @sql := IF(@has_groomer_code = 0 AND @has_groomer_id > 0,
+SET @sql := IF(@has_groomer_code = 0,
   'ALTER TABLE `groomer_working_hours` ADD COLUMN `groomerCode` VARCHAR(50) NULL',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @sql := IF(@has_groomer_id > 0,
-  'UPDATE `groomer_working_hours` t INNER JOIN `groomers` g ON g.id = t.groomerId SET t.groomerCode = g.groomerCode',
+  'UPDATE `groomer_working_hours` t INNER JOIN `groomers` g ON g.id = t.groomerId SET t.groomerCode = g.groomerCode WHERE t.groomerCode IS NULL OR t.groomerCode = ''''',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
--- Drop old FK if present
-SET @fk := (
-  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'groomer_working_hours'
-    AND COLUMN_NAME = 'groomerId' AND REFERENCED_TABLE_NAME IS NOT NULL
-  LIMIT 1
-);
-SET @sql := IF(@fk IS NOT NULL, CONCAT('ALTER TABLE `groomer_working_hours` DROP FOREIGN KEY `', @fk, '`'), 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CALL drop_column_indexes('groomer_working_hours', 'groomerId');
 
-SET @idx := (
-  SELECT INDEX_NAME FROM information_schema.STATISTICS
+SET @has_groomer_id := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'groomer_working_hours' AND COLUMN_NAME = 'groomerId'
-  LIMIT 1
 );
-SET @sql := IF(@idx IS NOT NULL, CONCAT('ALTER TABLE `groomer_working_hours` DROP INDEX `', @idx, '`'), 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 SET @sql := IF(@has_groomer_id > 0, 'ALTER TABLE `groomer_working_hours` DROP COLUMN `groomerId`', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
@@ -113,34 +156,25 @@ SET @has_groomer_code := (
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'groomer_unavailability' AND COLUMN_NAME = 'groomerCode'
 );
 
-SET @sql := IF(@has_groomer_code = 0 AND @has_groomer_id > 0,
+SET @sql := IF(@has_groomer_code = 0,
   'ALTER TABLE `groomer_unavailability` ADD COLUMN `groomerCode` VARCHAR(50) NULL',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 SET @sql := IF(@has_groomer_id > 0,
-  'UPDATE `groomer_unavailability` t INNER JOIN `groomers` g ON g.id = t.groomerId SET t.groomerCode = g.groomerCode',
+  'UPDATE `groomer_unavailability` t INNER JOIN `groomers` g ON g.id = t.groomerId SET t.groomerCode = g.groomerCode WHERE t.groomerCode IS NULL OR t.groomerCode = ''''',
   'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
-SET @fk := (
-  SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
-  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'groomer_unavailability'
-    AND COLUMN_NAME = 'groomerId' AND REFERENCED_TABLE_NAME IS NOT NULL
-  LIMIT 1
-);
-SET @sql := IF(@fk IS NOT NULL, CONCAT('ALTER TABLE `groomer_unavailability` DROP FOREIGN KEY `', @fk, '`'), 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+CALL drop_column_indexes('groomer_unavailability', 'groomerId');
 
-SET @idx := (
-  SELECT INDEX_NAME FROM information_schema.STATISTICS
+SET @has_groomer_id := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
   WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'groomer_unavailability' AND COLUMN_NAME = 'groomerId'
-  LIMIT 1
 );
-SET @sql := IF(@idx IS NOT NULL, CONCAT('ALTER TABLE `groomer_unavailability` DROP INDEX `', @idx, '`'), 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
 SET @sql := IF(@has_groomer_id > 0, 'ALTER TABLE `groomer_unavailability` DROP COLUMN `groomerId`', 'SELECT 1');
 PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 ALTER TABLE `groomer_unavailability` MODIFY `groomerCode` VARCHAR(50) NOT NULL;
+
+DROP PROCEDURE IF EXISTS `drop_column_indexes`;

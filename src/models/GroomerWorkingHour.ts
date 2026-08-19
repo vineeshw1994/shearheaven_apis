@@ -70,9 +70,13 @@ GroomerWorkingHour.init(
     tableName: 'groomer_working_hours',
     timestamps: true,
     indexes: [
-      { unique: true, fields: ['groomerCode', 'dayOfWeek', 'clientId', 'regionId', 'storeId'] },
-      { fields: ['groomerCode'] },
-      { fields: ['clientId', 'regionId', 'storeId'] },
+      {
+        unique: true,
+        name: 'gwh_code_day_tenant_unique',
+        fields: ['groomerCode', 'dayOfWeek', 'clientId', 'regionId', 'storeId'],
+      },
+      { name: 'gwh_groomer_code', fields: ['groomerCode'] },
+      { name: 'gwh_tenant', fields: ['clientId', 'regionId', 'storeId'] },
     ],
   }
 );
