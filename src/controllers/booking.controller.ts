@@ -18,6 +18,43 @@ export async function createBooking(req: AuthRequest, res: Response, next: NextF
   }
 }
 
+export async function cancelBooking(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookingId = Number(req.params.id);
+    const booking = await bookingService.cancelBooking(req.user!.id, bookingId);
+    sendSuccess(res, 'Booking cancelled successfully', booking);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getUpcomingBookings(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookings = await bookingService.getUpcomingBookings(req.user!.id);
+    sendSuccess(res, 'Upcoming bookings retrieved successfully', bookings);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getPastBookings(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookings = await bookingService.getPastBookings(req.user!.id);
+    sendSuccess(res, 'Past bookings retrieved successfully', bookings);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getCancelledBookings(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookings = await bookingService.getCancelledBookings(req.user!.id);
+    sendSuccess(res, 'Cancelled bookings retrieved successfully', bookings);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getAvailability(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const queryAddOnIds = req.query.addOnIds;

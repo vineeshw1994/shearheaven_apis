@@ -15,6 +15,9 @@ import {
   getWorkingHoursForDate,
   minutesToTime,
   timeToMinutes,
+  getServices,
+  getPackages,
+  getAddOns,
 } from './catalog.service';
 
 export interface CreateBookingInput {
@@ -285,4 +288,147 @@ export async function createBooking(
     totalDurationMinutes: booking.totalDurationMinutes,
     totalPrice: Number(booking.totalPrice),
   };
+}
+
+function nowParts() {
+  const now = new Date();
+  const date = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
+  const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  return { date, time };
+}
+
+function isBookingInPast(bookingDate: string, endTime: string): boolean {
+  const { date, time } = nowParts();
+  return bookingDate < date || (bookingDate === date && endTime < time);
+}
+
+function formatBooking(booking: Booking) {
+  const pet = booking.get('pet') as Pet | undefined;
+  const service = getServices().find((item) => item.id === booking.serviceId);
+  const pkg = booking.packageId ? getPackages().find((item) => item.id === booking.packageId) : null;
+  const addOns = (booking.addOnIds || [])
+    .map((id) => getAddOns().find((item) => item.id === id))
+    .filter(Boolean)
+    .map((item) => ({ id: item!.id, name: item!.name }));
+  const groomer = getCatalogGroomers().find((item) => item.id === booking.groomerId);
+
+  const createdAt = (booking as unknown as { createdAt?: Date }).createdAt;
+
+  return {
+    bookingId: booking.id,
+    status: booking.status,
+    bookingDate: booking.bookingDate,
+    startTime: booking.startTime,
+    endTime: booking.endTime,
+    pet: pet
+      ? {
+          id: pet.id,
+          petName: pet.petName,
+          breed: pet.breed,
+          profilePicture: pet.profilePicture,
+        }
+      : null,
+    serviceId: booking.serviceId,
+    serviceName: service?.name || null,
+    packageId: booking.packageId,
+    packageName: pkg?.name || null,
+    addOnIds: booking.addOnIds || [],
+    addOns,
+    groomerId: booking.groomerId,
+    groomerName: groomer?.name || null,
+    totalDurationMinutes: booking.totalDurationMinutes,
+    totalPrice: Number(booking.totalPrice),
+    clientId: booking.clientId,
+    regionId: booking.regionId,
+    storeId: booking.storeId,
+    createdAt: createdAt || null,
+  };
+}
+
+async function findUserBooking(userId: number, bookingId: number) {
+  const booking = await Booking.findByPk(bookingId, {
+    include: [{ model: Pet, as: 'pet' }],
+  });
+  if (!booking) {
+    throw new NotFoundError('Booking not found');
+  }
+  if (booking.userId !== userId) {
+    throw new ForbiddenError('You can only access your own bookings');
+  }
+  return booking;
+}
+
+async function listUserBookings(
+  userId: number,
+  where: Record<string, unknown>,
+  order: Array<[string, string]>
+) {
+  const bookings = await Booking.findAll({
+    where: { userId, ...where },
+    include: [{ model: Pet, as: 'pet' }],
+    order,
+  });
+  return bookings.map((booking) => formatBooking(booking));
+}
+
+export async function cancelBooking(userId: number, bookingId: number): Promise<Record<string, unknown>> {
+  const booking = await findUserBooking(userId, bookingId);
+
+  if (booking.status === 'cancelled') {
+    throw new ConflictError('Booking is already cancelled');
+  }
+  if (booking.status === 'completed') {
+    throw new AppError('Completed bookings cannot be cancelled', 400);
+  }
+  if (isBookingInPast(booking.bookingDate, booking.endTime)) {
+    throw new AppError('Past bookings cannot be cancelled', 400);
+  }
+
+  await booking.update({ status: 'cancelled' });
+  return formatBooking(booking);
+}
+
+export async function getUpcomingBookings(userId: number): Promise<Record<string, unknown>[]> {
+  const { date, time } = nowParts();
+  return listUserBookings(
+    userId,
+    {
+      status: 'confirmed',
+      [Op.or]: [{ bookingDate: { [Op.gt]: date } }, { bookingDate: date, startTime: { [Op.gte]: time } }],
+    },
+    [
+      ['bookingDate', 'ASC'],
+      ['startTime', 'ASC'],
+    ]
+  );
+}
+
+export async function getPastBookings(userId: number): Promise<Record<string, unknown>[]> {
+  const { date, time } = nowParts();
+  return listUserBookings(
+    userId,
+    {
+      status: { [Op.in]: ['confirmed', 'completed'] },
+      [Op.or]: [
+        { status: 'completed' },
+        { bookingDate: { [Op.lt]: date } },
+        { bookingDate: date, endTime: { [Op.lt]: time } },
+      ],
+    },
+    [
+      ['bookingDate', 'DESC'],
+      ['startTime', 'DESC'],
+    ]
+  );
+}
+
+export async function getCancelledBookings(userId: number): Promise<Record<string, unknown>[]> {
+  return listUserBookings(userId, { status: 'cancelled' }, [
+    ['bookingDate', 'DESC'],
+    ['startTime', 'DESC'],
+  ]);
 }
