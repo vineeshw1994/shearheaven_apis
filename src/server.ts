@@ -4,13 +4,14 @@ import { verifyMailConnection } from './config/mailer';
 import { validateEnv, env } from './config/env';
 import { logger } from './utils/logger';
 import { ensureModels } from './models';
-import { seedScheduleData } from './services/schedule.seed';
+import { alignScheduleSchema, seedScheduleData } from './services/schedule.seed';
 
 async function startServer(): Promise<void> {
   try {
     validateEnv();
     await testDatabaseConnection();
     await ensureModels();
+    await alignScheduleSchema();
     await seedScheduleData();
     logger.info('Database models synchronized');
 

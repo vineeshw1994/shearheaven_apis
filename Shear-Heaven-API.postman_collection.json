@@ -12,6 +12,7 @@
     { "key": "petId", "value": "1", "type": "string" },
     { "key": "bookingId", "value": "", "type": "string" },
     { "key": "groomerId", "value": "1", "type": "string" },
+    { "key": "groomerCode", "value": "G001", "type": "string" },
     { "key": "scheduleRecordId", "value": "1", "type": "string" }
   ],
   "auth": {
@@ -571,6 +572,158 @@
       "description": "CRUD APIs used by the admin page at /admin. No auth required. Filter by ClientID, RegionId, StoreId query params where supported.",
       "item": [
         {
+          "name": "Client Master",
+          "item": [
+            {
+              "name": "List Clients",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/clients",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "clients"]
+                }
+              }
+            },
+            {
+              "name": "Create Client",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientId\": \"SHEAR-001\",\n  \"name\": \"Shear Heaven\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/clients",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "clients"]
+                }
+              }
+            },
+            {
+              "name": "Update Client",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Shear Heaven\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/clients/{{scheduleRecordId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "clients", "{{scheduleRecordId}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Region Master",
+          "item": [
+            {
+              "name": "List Regions",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/regions?ClientID=SHEAR-001",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "regions"],
+                  "query": [{ "key": "ClientID", "value": "SHEAR-001" }]
+                }
+              }
+            },
+            {
+              "name": "Create Region",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"regionId\": \"DWG-001\",\n  \"clientId\": \"SHEAR-001\",\n  \"name\": \"Darwin\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/regions",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "regions"]
+                }
+              }
+            },
+            {
+              "name": "Update Region",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Darwin\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/regions/{{scheduleRecordId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "regions", "{{scheduleRecordId}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Store Master",
+          "item": [
+            {
+              "name": "List Stores",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/stores?ClientID=SHEAR-001&RegionId=DWG-001",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "stores"],
+                  "query": [
+                    { "key": "ClientID", "value": "SHEAR-001" },
+                    { "key": "RegionId", "value": "DWG-001" }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Store",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"storeId\": \"SHEAR-001\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"name\": \"Shear Heaven Darwin\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/stores",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "stores"]
+                }
+              }
+            },
+            {
+              "name": "Update Store",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Shear Heaven Darwin\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/stores/{{scheduleRecordId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "stores", "{{scheduleRecordId}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
           "name": "Groomers",
           "item": [
             {
@@ -777,11 +930,11 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/admin/groomer-hours?groomerId={{groomerId}}&ClientID=SHEAR-001&RegionId=DWG-001&StoreId=SHEAR-001",
+                  "raw": "{{baseUrl}}/api/admin/groomer-hours?groomerCode={{groomerCode}}&ClientID=SHEAR-001&RegionId=DWG-001&StoreId=SHEAR-001",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "admin", "groomer-hours"],
                   "query": [
-                    { "key": "groomerId", "value": "{{groomerId}}" },
+                    { "key": "groomerCode", "value": "{{groomerCode}}" },
                     { "key": "ClientID", "value": "SHEAR-001" },
                     { "key": "RegionId", "value": "DWG-001" },
                     { "key": "StoreId", "value": "SHEAR-001" }
@@ -796,7 +949,7 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"groomerId\": {{groomerId}},\n  \"dayOfWeek\": \"Tuesday\",\n  \"isWorking\": true,\n  \"startTime\": \"10:00\",\n  \"endTime\": \"15:00\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
+                  "raw": "{\n  \"groomerCode\": \"{{groomerCode}}\",\n  \"dayOfWeek\": \"Tuesday\",\n  \"isWorking\": true,\n  \"startTime\": \"10:00\",\n  \"endTime\": \"15:00\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/admin/groomer-hours",
@@ -844,11 +997,11 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/admin/groomer-unavailability?groomerId={{groomerId}}&ClientID=SHEAR-001&RegionId=DWG-001&StoreId=SHEAR-001",
+                  "raw": "{{baseUrl}}/api/admin/groomer-unavailability?groomerCode={{groomerCode}}&ClientID=SHEAR-001&RegionId=DWG-001&StoreId=SHEAR-001",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "admin", "groomer-unavailability"],
                   "query": [
-                    { "key": "groomerId", "value": "{{groomerId}}" },
+                    { "key": "groomerCode", "value": "{{groomerCode}}" },
                     { "key": "ClientID", "value": "SHEAR-001" },
                     { "key": "RegionId", "value": "DWG-001" },
                     { "key": "StoreId", "value": "SHEAR-001" }
@@ -863,7 +1016,7 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"groomerId\": {{groomerId}},\n  \"startDate\": \"2026-08-25\",\n  \"endDate\": \"2026-08-25\",\n  \"startTime\": \"12:00\",\n  \"endTime\": \"13:00\",\n  \"reason\": \"Lunch break\",\n  \"leaveType\": \"break\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
+                  "raw": "{\n  \"groomerCode\": \"{{groomerCode}}\",\n  \"startDate\": \"2026-08-25\",\n  \"endDate\": \"2026-08-25\",\n  \"startTime\": \"12:00\",\n  \"endTime\": \"13:00\",\n  \"reason\": \"Lunch break\",\n  \"leaveType\": \"break\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/admin/groomer-unavailability",

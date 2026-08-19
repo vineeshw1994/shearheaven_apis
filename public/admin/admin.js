@@ -1,6 +1,39 @@
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const resources = {
+  clients: {
+    title: 'Client Master',
+    path: '/api/admin/clients',
+    columns: ['id', 'clientId', 'name', 'isActive'],
+    fields: [
+      { name: 'clientId', label: 'ClientID', required: true },
+      { name: 'name', label: 'Name', required: true },
+      { name: 'isActive', label: 'Active', type: 'checkbox' },
+    ],
+  },
+  regions: {
+    title: 'Region Master',
+    path: '/api/admin/regions',
+    columns: ['id', 'regionId', 'name', 'clientId', 'isActive'],
+    fields: [
+      { name: 'regionId', label: 'RegionId', required: true },
+      { name: 'name', label: 'Name', required: true },
+      { name: 'clientId', label: 'ClientID', required: true },
+      { name: 'isActive', label: 'Active', type: 'checkbox' },
+    ],
+  },
+  stores: {
+    title: 'Store Master',
+    path: '/api/admin/stores',
+    columns: ['id', 'storeId', 'name', 'clientId', 'regionId', 'isActive'],
+    fields: [
+      { name: 'storeId', label: 'StoreId', required: true },
+      { name: 'name', label: 'Name', required: true },
+      { name: 'clientId', label: 'ClientID', required: true },
+      { name: 'regionId', label: 'RegionId', required: true },
+      { name: 'isActive', label: 'Active', type: 'checkbox' },
+    ],
+  },
   groomers: {
     title: 'Groomers',
     path: '/api/admin/groomers',
@@ -50,9 +83,9 @@ const resources = {
   groomerHours: {
     title: 'Groomer Working Hours',
     path: '/api/admin/groomer-hours',
-    columns: ['id', 'groomerId', 'dayOfWeek', 'isWorking', 'startTime', 'endTime', 'clientId', 'regionId', 'storeId'],
+    columns: ['id', 'groomerCode', 'dayOfWeek', 'isWorking', 'startTime', 'endTime', 'clientId', 'regionId', 'storeId'],
     fields: [
-      { name: 'groomerId', label: 'Groomer', type: 'groomer', required: true },
+      { name: 'groomerCode', label: 'Groomer', type: 'groomer', required: true },
       { name: 'dayOfWeek', label: 'Day', type: 'select', options: DAYS, required: true },
       { name: 'isWorking', label: 'Working', type: 'checkbox' },
       { name: 'startTime', label: 'Start Time', type: 'time' },
@@ -65,9 +98,9 @@ const resources = {
   unavailability: {
     title: 'Groomer Unavailability',
     path: '/api/admin/groomer-unavailability',
-    columns: ['id', 'groomerId', 'startDate', 'endDate', 'startTime', 'endTime', 'leaveType', 'reason', 'clientId', 'regionId', 'storeId'],
+    columns: ['id', 'groomerCode', 'startDate', 'endDate', 'startTime', 'endTime', 'leaveType', 'reason', 'clientId', 'regionId', 'storeId'],
     fields: [
-      { name: 'groomerId', label: 'Groomer', type: 'groomer', required: true },
+      { name: 'groomerCode', label: 'Groomer', type: 'groomer', required: true },
       { name: 'startDate', label: 'Start Date', type: 'date', required: true },
       { name: 'endDate', label: 'End Date', type: 'date', required: true },
       { name: 'startTime', label: 'Start Time', type: 'time' },
@@ -81,8 +114,8 @@ const resources = {
   },
 };
 
-const tabOrder = ['groomers', 'holidays', 'storeHours', 'groomerHours', 'unavailability'];
-let currentKey = 'groomers';
+const tabOrder = ['clients', 'regions', 'stores', 'groomers', 'holidays', 'storeHours', 'groomerHours', 'unavailability'];
+let currentKey = 'clients';
 let rows = [];
 let groomers = [];
 let editingId = null;
@@ -124,13 +157,15 @@ async function api(path, options) {
   return json.data;
 }
 
-function groomerLabel(id) {
-  const match = groomers.find((item) => Number(item.id) === Number(id));
-  return match ? `${match.id} - ${match.firstName} ${match.lastName}` : id;
+function groomerLabel(code) {
+  const match = groomers.find((item) => item.groomerCode === code);
+  return match ? `${match.groomerCode} - ${match.firstName} ${match.lastName}` : code;
 }
 
 function formatCell(column, value) {
-  if (column === 'groomerId') return groomerLabel(value);
+  if (column === 'groomerCode' && (currentKey === 'groomerHours' || currentKey === 'unavailability')) {
+    return groomerLabel(value);
+  }
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
   return value === null || value === undefined || value === '' ? '-' : value;
 }
@@ -197,7 +232,7 @@ function openModal(id) {
       }
       if (field.type === 'select' || field.type === 'groomer') {
         const options = field.type === 'groomer'
-          ? groomers.map((item) => ({ value: item.id, label: `${item.id} - ${item.firstName} ${item.lastName}` }))
+          ? groomers.map((item) => ({ value: item.groomerCode, label: `${item.groomerCode} - ${item.firstName} ${item.lastName}` }))
           : field.options.map((option) => ({ value: option, label: option }));
         return `<label>${field.label}<select name="${field.name}" ${field.required ? 'required' : ''}>
           ${options.map((option) => `<option value="${option.value}" ${String(option.value) === String(value) ? 'selected' : ''}>${option.label}</option>`).join('')}
@@ -224,8 +259,8 @@ function readForm() {
       data[field.name] = input.checked;
       return;
     }
-    if (field.name === 'groomerId') {
-      data[field.name] = Number(input.value);
+    if (field.name === 'groomerCode' && field.type === 'groomer') {
+      data[field.name] = input.value;
       return;
     }
     if (field.type === 'time' && input.value) {

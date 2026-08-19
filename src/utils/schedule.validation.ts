@@ -77,7 +77,7 @@ export const storeHourUpdateSchema = storeHourCreateSchema.fork(['dayOfWeek'], (
 );
 
 export const groomerHourCreateSchema = Joi.object({
-  groomerId: Joi.number().integer().positive().required(),
+  groomerCode: Joi.string().trim().max(50).required(),
   dayOfWeek: Joi.string()
     .valid(...days)
     .required(),
@@ -88,12 +88,12 @@ export const groomerHourCreateSchema = Joi.object({
 });
 
 export const groomerHourUpdateSchema = groomerHourCreateSchema.fork(
-  ['groomerId', 'dayOfWeek'],
+  ['groomerCode', 'dayOfWeek'],
   (schema) => schema.optional()
 );
 
 export const unavailabilityCreateSchema = Joi.object({
-  groomerId: Joi.number().integer().positive().required(),
+  groomerCode: Joi.string().trim().max(50).required(),
   startDate: dateSchema.required(),
   endDate: dateSchema.required(),
   startTime: timeSchema.optional(),
@@ -104,6 +104,42 @@ export const unavailabilityCreateSchema = Joi.object({
 });
 
 export const unavailabilityUpdateSchema = unavailabilityCreateSchema.fork(
-  ['groomerId', 'startDate', 'endDate'],
+  ['groomerCode', 'startDate', 'endDate'],
   (schema) => schema.optional()
+);
+
+export const clientCreateSchema = Joi.object({
+  clientId: Joi.string().trim().max(50).required(),
+  name: Joi.string().trim().max(150).required(),
+  isActive: Joi.boolean().optional(),
+});
+
+export const clientUpdateSchema = clientCreateSchema.fork(['clientId', 'name'], (schema) =>
+  schema.optional()
+);
+
+export const regionCreateSchema = Joi.object({
+  regionId: Joi.string().trim().max(50).required(),
+  name: Joi.string().trim().max(150).required(),
+  isActive: Joi.boolean().optional(),
+  ClientID: Joi.string().max(50).allow('').optional(),
+  clientId: Joi.string().max(50).allow('').optional(),
+});
+
+export const regionUpdateSchema = regionCreateSchema.fork(['regionId', 'name'], (schema) =>
+  schema.optional()
+);
+
+export const storeMasterCreateSchema = Joi.object({
+  storeId: Joi.string().trim().max(50).required(),
+  name: Joi.string().trim().max(150).required(),
+  isActive: Joi.boolean().optional(),
+  ClientID: Joi.string().max(50).allow('').optional(),
+  RegionId: Joi.string().max(50).allow('').optional(),
+  clientId: Joi.string().max(50).allow('').optional(),
+  regionId: Joi.string().max(50).allow('').optional(),
+});
+
+export const storeMasterUpdateSchema = storeMasterCreateSchema.fork(['storeId', 'name'], (schema) =>
+  schema.optional()
 );

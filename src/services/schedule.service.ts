@@ -154,14 +154,18 @@ export async function getGroomerAvailability(input: GroomerAvailabilityInput): P
   };
 
   const groomerIds = groomers.map((groomer) => groomer.id);
+  const groomerCodes = groomers.map((groomer) => groomer.groomerCode);
 
   const [workingHours, unavailability, bookings] = await Promise.all([
     GroomerWorkingHour.findAll({
-      where: { groomerId: { [Op.in]: groomerIds.length ? groomerIds : [0] }, dayOfWeek },
+      where: {
+        groomerCode: { [Op.in]: groomerCodes.length ? groomerCodes : [''] },
+        dayOfWeek,
+      },
     }),
     GroomerUnavailability.findAll({
       where: {
-        groomerId: { [Op.in]: groomerIds.length ? groomerIds : [0] },
+        groomerCode: { [Op.in]: groomerCodes.length ? groomerCodes : [''] },
         startDate: { [Op.lte]: input.date },
         endDate: { [Op.gte]: input.date },
       },
@@ -177,8 +181,8 @@ export async function getGroomerAvailability(input: GroomerAvailabilityInput): P
   ]);
 
   const result = groomers.map((groomer) => {
-    const hours = workingHours.find((row) => row.groomerId === groomer.id);
-    const groomerBlocks = unavailability.filter((row) => row.groomerId === groomer.id);
+    const hours = workingHours.find((row) => row.groomerCode === groomer.groomerCode);
+    const groomerBlocks = unavailability.filter((row) => row.groomerCode === groomer.groomerCode);
     const groomerBookings = bookings.filter((row) => row.groomerId === groomer.id);
     const bookedSlots = groomerBookings.map((booking) => ({
       bookingId: booking.id,

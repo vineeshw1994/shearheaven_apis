@@ -4,6 +4,9 @@ import Otp from './Otp';
 import RefreshToken from './RefreshToken';
 import PendingSignup from './PendingSignup';
 import Booking from './Booking';
+import ClientMaster from './ClientMaster';
+import RegionMaster from './RegionMaster';
+import StoreMaster from './StoreMaster';
 import Groomer from './Groomer';
 import Holiday from './Holiday';
 import StoreOperationalHour from './StoreOperationalHour';
@@ -22,11 +25,11 @@ Booking.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Pet.hasMany(Booking, { foreignKey: 'petId', as: 'bookings' });
 Booking.belongsTo(Pet, { foreignKey: 'petId', as: 'pet' });
 
-Groomer.hasMany(GroomerWorkingHour, { foreignKey: 'groomerId', as: 'workingHours' });
-GroomerWorkingHour.belongsTo(Groomer, { foreignKey: 'groomerId', as: 'groomer' });
+ClientMaster.hasMany(RegionMaster, { foreignKey: 'clientId', sourceKey: 'clientId', as: 'regions' });
+RegionMaster.belongsTo(ClientMaster, { foreignKey: 'clientId', targetKey: 'clientId', as: 'client' });
 
-Groomer.hasMany(GroomerUnavailability, { foreignKey: 'groomerId', as: 'unavailability' });
-GroomerUnavailability.belongsTo(Groomer, { foreignKey: 'groomerId', as: 'groomer' });
+ClientMaster.hasMany(StoreMaster, { foreignKey: 'clientId', sourceKey: 'clientId', as: 'stores' });
+StoreMaster.belongsTo(ClientMaster, { foreignKey: 'clientId', targetKey: 'clientId', as: 'client' });
 
 export {
   User,
@@ -35,6 +38,9 @@ export {
   RefreshToken,
   PendingSignup,
   Booking,
+  ClientMaster,
+  RegionMaster,
+  StoreMaster,
   Groomer,
   Holiday,
   StoreOperationalHour,
@@ -49,6 +55,9 @@ export async function syncModels(force = false): Promise<void> {
   await RefreshToken.sync({ force });
   await PendingSignup.sync({ force });
   await Booking.sync({ force });
+  await ClientMaster.sync({ force });
+  await RegionMaster.sync({ force });
+  await StoreMaster.sync({ force });
   await Groomer.sync({ force });
   await Holiday.sync({ force });
   await StoreOperationalHour.sync({ force });
@@ -64,6 +73,9 @@ export async function ensureModels(): Promise<void> {
   await RefreshToken.sync();
   await PendingSignup.sync();
   await Booking.sync();
+  await ClientMaster.sync();
+  await RegionMaster.sync();
+  await StoreMaster.sync();
   await Groomer.sync();
   await Holiday.sync();
   await StoreOperationalHour.sync();
@@ -78,6 +90,9 @@ export default {
   RefreshToken,
   PendingSignup,
   Booking,
+  ClientMaster,
+  RegionMaster,
+  StoreMaster,
   Groomer,
   Holiday,
   StoreOperationalHour,

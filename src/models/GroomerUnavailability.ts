@@ -12,7 +12,7 @@ class GroomerUnavailability extends Model<
   InferCreationAttributes<GroomerUnavailability>
 > {
   declare id: CreationOptional<number>;
-  declare groomerId: number;
+  declare groomerCode: string;
   declare startDate: string;
   declare endDate: string;
   declare startTime: CreationOptional<string>;
@@ -31,15 +31,9 @@ GroomerUnavailability.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    groomerId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+    groomerCode: {
+      type: DataTypes.STRING(50),
       allowNull: false,
-      references: {
-        model: 'groomers',
-        key: 'id',
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
     },
     startDate: {
       type: DataTypes.DATEONLY,
@@ -87,7 +81,7 @@ GroomerUnavailability.init(
     tableName: 'groomer_unavailability',
     timestamps: true,
     indexes: [
-      { fields: ['groomerId'] },
+      { fields: ['groomerCode'] },
       { fields: ['startDate', 'endDate'] },
       { fields: ['clientId', 'regionId', 'storeId'] },
     ],

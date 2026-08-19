@@ -13,10 +13,130 @@ import {
   groomerHourUpdateSchema,
   unavailabilityCreateSchema,
   unavailabilityUpdateSchema,
+  clientCreateSchema,
+  clientUpdateSchema,
+  regionCreateSchema,
+  regionUpdateSchema,
+  storeMasterCreateSchema,
+  storeMasterUpdateSchema,
 } from '../utils/schedule.validation';
 
 function idParam(req: Request): number {
   return Number(req.params.id);
+}
+
+export async function listClients(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rows = await adminService.listClients();
+    sendSuccess(res, 'Clients retrieved successfully', rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createClient(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<Record<string, unknown>>(clientCreateSchema, req.body);
+    const row = await adminService.createClient(data);
+    sendSuccess(res, 'Client created successfully', row, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateClient(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<Record<string, unknown>>(clientUpdateSchema, req.body);
+    const row = await adminService.updateClient(idParam(req), data);
+    sendSuccess(res, 'Client updated successfully', row);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteClient(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await adminService.deleteClient(idParam(req));
+    sendSuccess(res, 'Client deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listRegions(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rows = await adminService.listRegions(req.query);
+    sendSuccess(res, 'Regions retrieved successfully', rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createRegion(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<Parameters<typeof adminService.createRegion>[0]>(regionCreateSchema, req.body);
+    const row = await adminService.createRegion(data);
+    sendSuccess(res, 'Region created successfully', row, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateRegion(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<Record<string, unknown>>(regionUpdateSchema, req.body);
+    const row = await adminService.updateRegion(idParam(req), data);
+    sendSuccess(res, 'Region updated successfully', row);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteRegion(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await adminService.deleteRegion(idParam(req));
+    sendSuccess(res, 'Region deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listStores(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rows = await adminService.listStores(req.query);
+    sendSuccess(res, 'Stores retrieved successfully', rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createStore(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<Parameters<typeof adminService.createStore>[0]>(storeMasterCreateSchema, req.body);
+    const row = await adminService.createStore(data);
+    sendSuccess(res, 'Store created successfully', row, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateStore(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<Record<string, unknown>>(storeMasterUpdateSchema, req.body);
+    const row = await adminService.updateStore(idParam(req), data);
+    sendSuccess(res, 'Store updated successfully', row);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteStore(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await adminService.deleteStore(idParam(req));
+    sendSuccess(res, 'Store deleted successfully');
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function listGroomers(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -137,7 +257,7 @@ export async function listGroomerHours(req: Request, res: Response, next: NextFu
   try {
     const rows = await adminService.listGroomerHours({
       ...req.query,
-      groomerId: req.query.groomerId ? Number(req.query.groomerId) : undefined,
+      groomerCode: req.query.groomerCode ? String(req.query.groomerCode) : undefined,
     });
     sendSuccess(res, 'Groomer working hours retrieved successfully', rows);
   } catch (error) {
@@ -178,7 +298,7 @@ export async function listUnavailability(req: Request, res: Response, next: Next
   try {
     const rows = await adminService.listUnavailability({
       ...req.query,
-      groomerId: req.query.groomerId ? Number(req.query.groomerId) : undefined,
+      groomerCode: req.query.groomerCode ? String(req.query.groomerCode) : undefined,
     });
     sendSuccess(res, 'Groomer unavailability retrieved successfully', rows);
   } catch (error) {

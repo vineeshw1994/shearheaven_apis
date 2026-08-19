@@ -1,4 +1,9 @@
+import { QueryTypes } from 'sequelize';
+import { sequelize } from '../config/database';
 import {
+  ClientMaster,
+  RegionMaster,
+  StoreMaster,
   Groomer,
   Holiday,
   StoreOperationalHour,
@@ -15,7 +20,120 @@ function parseUsDate(value: string): string {
   return `${year}-${month}-${day}`;
 }
 
+async function hasColumn(table: string, column: string): Promise<boolean> {
+  const rows = await sequelize.query<{ Field: string }>(
+    `SHOW COLUMNS FROM \`${table}\` LIKE :column`,
+    { replacements: { column }, type: QueryTypes.SELECT }
+  );
+  return rows.length > 0;
+}
+
+async function tableExists(table: string): Promise<boolean> {
+  const rows = await sequelize.query<{ name: string }>(
+    `SELECT TABLE_NAME AS name FROM information_schema.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = :table`,
+    { replacements: { table }, type: QueryTypes.SELECT }
+  );
+  return rows.length > 0;
+}
+
+async function dropColumnWithIndexes(table: string, column: string): Promise<void> {
+  if (!(await hasColumn(table, column))) {
+    return;
+  }
+
+  const fks = await sequelize.query<{ CONSTRAINT_NAME: string }>(
+    `SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = :table
+       AND COLUMN_NAME = :column
+       AND REFERENCED_TABLE_NAME IS NOT NULL`,
+    { replacements: { table, column }, type: QueryTypes.SELECT }
+  );
+
+  for (const fk of fks) {
+    await sequelize.query(`ALTER TABLE \`${table}\` DROP FOREIGN KEY \`${fk.CONSTRAINT_NAME}\``);
+  }
+
+  const indexes = await sequelize.query<{ Key_name: string; Column_name: string }>(
+    `SHOW INDEX FROM \`${table}\``,
+    { type: QueryTypes.SELECT }
+  );
+  const toDrop = [
+    ...new Set(
+      indexes
+        .filter((row) => row.Column_name === column && row.Key_name !== 'PRIMARY')
+        .map((row) => row.Key_name)
+    ),
+  ];
+  for (const name of toDrop) {
+    await sequelize.query(`ALTER TABLE \`${table}\` DROP INDEX \`${name}\``);
+  }
+
+  await sequelize.query(`ALTER TABLE \`${table}\` DROP COLUMN \`${column}\``);
+}
+
+async function migrateTableToGroomerCode(table: string): Promise<void> {
+  if (!(await tableExists(table))) {
+    return;
+  }
+
+  const hasCode = await hasColumn(table, 'groomerCode');
+  const hasId = await hasColumn(table, 'groomerId');
+
+  if (!hasCode && hasId) {
+    await sequelize.query(`ALTER TABLE \`${table}\` ADD COLUMN \`groomerCode\` VARCHAR(50) NULL`);
+    await sequelize.query(
+      `UPDATE \`${table}\` t
+       INNER JOIN \`groomers\` g ON g.id = t.groomerId
+       SET t.groomerCode = g.groomerCode`
+    );
+    await sequelize.query(`UPDATE \`${table}\` SET \`groomerCode\` = '' WHERE \`groomerCode\` IS NULL`);
+    await sequelize.query(`ALTER TABLE \`${table}\` MODIFY \`groomerCode\` VARCHAR(50) NOT NULL`);
+  }
+
+  if (hasId) {
+    await dropColumnWithIndexes(table, 'groomerId');
+  }
+}
+
+export async function alignScheduleSchema(): Promise<void> {
+  await migrateTableToGroomerCode('groomer_working_hours');
+  await migrateTableToGroomerCode('groomer_unavailability');
+}
+
+async function seedMasters(): Promise<void> {
+  if ((await ClientMaster.count()) > 0) {
+    return;
+  }
+
+  await ClientMaster.create({
+    clientId: DEFAULT_TENANT.clientId,
+    name: 'Shear Heaven',
+    isActive: true,
+  });
+
+  await RegionMaster.create({
+    regionId: DEFAULT_TENANT.regionId,
+    clientId: DEFAULT_TENANT.clientId,
+    name: 'Darwin',
+    isActive: true,
+  });
+
+  await StoreMaster.create({
+    storeId: DEFAULT_TENANT.storeId,
+    clientId: DEFAULT_TENANT.clientId,
+    regionId: DEFAULT_TENANT.regionId,
+    name: 'Shear Heaven Darwin',
+    isActive: true,
+  });
+
+  logger.info('Client, region, and store master sample data seeded');
+}
+
 export async function seedScheduleData(): Promise<void> {
+  await seedMasters();
+
   const existing = await Groomer.count();
   if (existing > 0) {
     return;
@@ -83,7 +201,7 @@ export async function seedScheduleData(): Promise<void> {
       const isWorking = !['Sunday', 'Monday'].includes(day);
       const isShortShift = groomer.groomerCode === 'G002';
       return {
-        groomerId: groomer.id,
+        groomerCode: groomer.groomerCode,
         dayOfWeek: day,
         isWorking,
         startTime: isWorking ? (isShortShift ? '10:00' : '08:00') : '',
@@ -103,7 +221,7 @@ export async function seedScheduleData(): Promise<void> {
   const unavailabilityRows = [];
   if (merisa) {
     unavailabilityRows.push({
-      groomerId: merisa.id,
+      groomerCode: merisa.groomerCode,
       startDate: '2026-08-19',
       endDate: '2026-08-19',
       startTime: '12:00',
@@ -117,7 +235,7 @@ export async function seedScheduleData(): Promise<void> {
   }
   if (richard) {
     unavailabilityRows.push({
-      groomerId: richard.id,
+      groomerCode: richard.groomerCode,
       startDate: '2026-08-20',
       endDate: '2026-08-20',
       startTime: '',
@@ -131,7 +249,7 @@ export async function seedScheduleData(): Promise<void> {
   }
   if (jeremiah) {
     unavailabilityRows.push({
-      groomerId: jeremiah.id,
+      groomerCode: jeremiah.groomerCode,
       startDate: '2026-09-01',
       endDate: '2026-09-03',
       startTime: '',

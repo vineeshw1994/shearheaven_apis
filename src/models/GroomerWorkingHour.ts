@@ -12,7 +12,7 @@ class GroomerWorkingHour extends Model<
   InferCreationAttributes<GroomerWorkingHour>
 > {
   declare id: CreationOptional<number>;
-  declare groomerId: number;
+  declare groomerCode: string;
   declare dayOfWeek: string;
   declare isWorking: CreationOptional<boolean>;
   declare startTime: CreationOptional<string>;
@@ -29,15 +29,9 @@ GroomerWorkingHour.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    groomerId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+    groomerCode: {
+      type: DataTypes.STRING(50),
       allowNull: false,
-      references: {
-        model: 'groomers',
-        key: 'id',
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
     },
     dayOfWeek: {
       type: DataTypes.STRING(20),
@@ -76,8 +70,8 @@ GroomerWorkingHour.init(
     tableName: 'groomer_working_hours',
     timestamps: true,
     indexes: [
-      { unique: true, fields: ['groomerId', 'dayOfWeek'] },
-      { fields: ['groomerId'] },
+      { unique: true, fields: ['groomerCode', 'dayOfWeek', 'clientId', 'regionId', 'storeId'] },
+      { fields: ['groomerCode'] },
       { fields: ['clientId', 'regionId', 'storeId'] },
     ],
   }

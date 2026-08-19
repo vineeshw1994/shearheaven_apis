@@ -13,6 +13,21 @@ const router = Router();
  *     tags: [Admin]
  *     summary: Create a groomer
  */
+router.get('/clients', adminController.listClients);
+router.post('/clients', adminController.createClient);
+router.put('/clients/:id', adminController.updateClient);
+router.delete('/clients/:id', adminController.deleteClient);
+
+router.get('/regions', adminController.listRegions);
+router.post('/regions', adminController.createRegion);
+router.put('/regions/:id', adminController.updateRegion);
+router.delete('/regions/:id', adminController.deleteRegion);
+
+router.get('/stores', adminController.listStores);
+router.post('/stores', adminController.createStore);
+router.put('/stores/:id', adminController.updateStore);
+router.delete('/stores/:id', adminController.deleteStore);
+
 router.get('/groomers', adminController.listGroomers);
 router.post('/groomers', adminController.createGroomer);
 router.put('/groomers/:id', adminController.updateGroomer);

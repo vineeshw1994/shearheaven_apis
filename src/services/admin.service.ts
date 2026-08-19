@@ -1,5 +1,8 @@
 import { Model, ModelStatic, WhereOptions } from 'sequelize';
 import {
+  ClientMaster,
+  RegionMaster,
+  StoreMaster,
   Groomer,
   Holiday,
   StoreOperationalHour,
@@ -41,6 +44,87 @@ function assertDay(dayOfWeek?: string) {
   if (dayOfWeek && !DAYS_OF_WEEK.includes(dayOfWeek as (typeof DAYS_OF_WEEK)[number])) {
     throw new ValidationError(`dayOfWeek must be one of: ${DAYS_OF_WEEK.join(', ')}`);
   }
+}
+
+async function assertGroomerCode(groomerCode: string, tenant: TenantInput = {}) {
+  const where: Record<string, unknown> = { groomerCode, ...tenantFilter(tenant) };
+  const row = await Groomer.findOne({ where });
+  if (!row) {
+    throw new NotFoundError(`Groomer code ${groomerCode} not found`);
+  }
+  return row;
+}
+
+export async function listClients() {
+  return listRows(ClientMaster, {}, [['id', 'ASC']]);
+}
+
+export async function createClient(body: Record<string, unknown>) {
+  return ClientMaster.create(body as never);
+}
+
+export async function updateClient(id: number, body: Record<string, unknown>) {
+  const row = await getRow(ClientMaster, id);
+  await row.update(body);
+  return row;
+}
+
+export async function deleteClient(id: number) {
+  const row = await getRow(ClientMaster, id);
+  await row.destroy();
+}
+
+export async function listRegions(query: TenantInput) {
+  const where: WhereOptions = {};
+  if (query.ClientID || query.clientId) {
+    (where as Record<string, unknown>).clientId = (query.ClientID || query.clientId) as string;
+  }
+  return listRows(RegionMaster, where, [['id', 'ASC']]);
+}
+
+export async function createRegion(body: TenantInput & Record<string, unknown>) {
+  const payload = {
+    ...body,
+    clientId: body.clientId || body.ClientID || resolveTenant(body).clientId,
+  };
+  return RegionMaster.create(payload as never);
+}
+
+export async function updateRegion(id: number, body: Record<string, unknown>) {
+  const row = await getRow(RegionMaster, id);
+  await row.update(body);
+  return row;
+}
+
+export async function deleteRegion(id: number) {
+  const row = await getRow(RegionMaster, id);
+  await row.destroy();
+}
+
+export async function listStores(query: TenantInput) {
+  const where: WhereOptions = {};
+  if (query.ClientID || query.clientId) {
+    (where as Record<string, unknown>).clientId = (query.ClientID || query.clientId) as string;
+  }
+  if (query.RegionId || query.regionId) {
+    (where as Record<string, unknown>).regionId = (query.RegionId || query.regionId) as string;
+  }
+  return listRows(StoreMaster, where, [['id', 'ASC']]);
+}
+
+export async function createStore(body: TenantInput & Record<string, unknown>) {
+  return StoreMaster.create(withTenant(body) as never);
+}
+
+export async function updateStore(id: number, body: Record<string, unknown>) {
+  const row = await getRow(StoreMaster, id);
+  await row.update(body);
+  return row;
+}
+
+export async function deleteStore(id: number) {
+  const row = await getRow(StoreMaster, id);
+  await row.destroy();
 }
 
 export async function listGroomers(query: TenantInput) {
@@ -102,29 +186,30 @@ export async function deleteStoreHour(id: number) {
   await row.destroy();
 }
 
-export async function listGroomerHours(query: TenantInput & { groomerId?: number }) {
+export async function listGroomerHours(query: TenantInput & { groomerCode?: string }) {
   const where: WhereOptions = { ...tenantFilter(query) };
-  if (query.groomerId) {
-    (where as Record<string, unknown>).groomerId = query.groomerId;
+  if (query.groomerCode) {
+    (where as Record<string, unknown>).groomerCode = query.groomerCode;
   }
   return listRows(GroomerWorkingHour, where, [
-    ['groomerId', 'ASC'],
+    ['groomerCode', 'ASC'],
     ['id', 'ASC'],
   ]);
 }
 
 export async function createGroomerHour(
-  body: TenantInput & { groomerId: number; dayOfWeek: string } & Record<string, unknown>
+  body: TenantInput & { groomerCode: string; dayOfWeek: string } & Record<string, unknown>
 ) {
   assertDay(body.dayOfWeek);
-  await getRow(Groomer, body.groomerId);
-  return GroomerWorkingHour.create(withTenant(body) as never);
+  const tenant = withTenant(body);
+  await assertGroomerCode(body.groomerCode, tenant);
+  return GroomerWorkingHour.create(tenant as never);
 }
 
 export async function updateGroomerHour(id: number, body: Record<string, unknown>) {
   assertDay(body.dayOfWeek as string | undefined);
-  if (body.groomerId) {
-    await getRow(Groomer, Number(body.groomerId));
+  if (body.groomerCode) {
+    await assertGroomerCode(String(body.groomerCode), body);
   }
   const row = await getRow(GroomerWorkingHour, id);
   await row.update(body);
@@ -136,10 +221,10 @@ export async function deleteGroomerHour(id: number) {
   await row.destroy();
 }
 
-export async function listUnavailability(query: TenantInput & { groomerId?: number }) {
+export async function listUnavailability(query: TenantInput & { groomerCode?: string }) {
   const where: WhereOptions = { ...tenantFilter(query) };
-  if (query.groomerId) {
-    (where as Record<string, unknown>).groomerId = query.groomerId;
+  if (query.groomerCode) {
+    (where as Record<string, unknown>).groomerCode = query.groomerCode;
   }
   return listRows(GroomerUnavailability, where, [
     ['startDate', 'ASC'],
@@ -148,15 +233,16 @@ export async function listUnavailability(query: TenantInput & { groomerId?: numb
 }
 
 export async function createUnavailability(
-  body: TenantInput & { groomerId: number } & Record<string, unknown>
+  body: TenantInput & { groomerCode: string } & Record<string, unknown>
 ) {
-  await getRow(Groomer, body.groomerId);
-  return GroomerUnavailability.create(withTenant(body) as never);
+  const tenant = withTenant(body);
+  await assertGroomerCode(body.groomerCode, tenant);
+  return GroomerUnavailability.create(tenant as never);
 }
 
 export async function updateUnavailability(id: number, body: Record<string, unknown>) {
-  if (body.groomerId) {
-    await getRow(Groomer, Number(body.groomerId));
+  if (body.groomerCode) {
+    await assertGroomerCode(String(body.groomerCode), body);
   }
   const row = await getRow(GroomerUnavailability, id);
   await row.update(body);

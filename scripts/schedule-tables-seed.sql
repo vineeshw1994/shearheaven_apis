@@ -8,6 +8,49 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- ---------------------------------------------------------------------------
+-- MASTER TABLES
+-- Client has multiple stores in different regions.
+-- Store always has clientId + regionId.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `client_master` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `clientId` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `isActive` TINYINT(1) NOT NULL DEFAULT 1,
+  `createdAt` DATETIME NOT NULL,
+  `updatedAt` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `client_master_client_id_unique` (`clientId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `region_master` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `regionId` VARCHAR(50) NOT NULL,
+  `clientId` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `isActive` TINYINT(1) NOT NULL DEFAULT 1,
+  `createdAt` DATETIME NOT NULL,
+  `updatedAt` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `region_master_client_region_unique` (`clientId`, `regionId`),
+  KEY `region_master_client_id` (`clientId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `store_master` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `storeId` VARCHAR(50) NOT NULL,
+  `clientId` VARCHAR(50) NOT NULL,
+  `regionId` VARCHAR(50) NOT NULL,
+  `name` VARCHAR(150) NOT NULL,
+  `isActive` TINYINT(1) NOT NULL DEFAULT 1,
+  `createdAt` DATETIME NOT NULL,
+  `updatedAt` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `store_master_store_tenant_unique` (`storeId`, `clientId`, `regionId`),
+  KEY `store_master_client_region` (`clientId`, `regionId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ---------------------------------------------------------------------------
 -- 1. groomers
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `groomers` (
@@ -69,11 +112,11 @@ CREATE TABLE IF NOT EXISTS `store_operational_hours` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------------------
--- 4. groomer_working_hours
+-- 4. groomer_working_hours (linked by groomerCode)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `groomer_working_hours` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `groomerId` INT UNSIGNED NOT NULL,
+  `groomerCode` VARCHAR(50) NOT NULL,
   `dayOfWeek` VARCHAR(20) NOT NULL,
   `isWorking` TINYINT(1) NOT NULL DEFAULT 0,
   `startTime` VARCHAR(5) NOT NULL DEFAULT '',
@@ -84,18 +127,17 @@ CREATE TABLE IF NOT EXISTS `groomer_working_hours` (
   `createdAt` DATETIME NOT NULL,
   `updatedAt` DATETIME NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `groomer_hours_day_unique` (`groomerId`, `dayOfWeek`),
-  KEY `groomer_working_hours_groomer_id` (`groomerId`),
-  KEY `groomer_working_hours_client_id_region_id_store_id` (`clientId`, `regionId`, `storeId`),
-  CONSTRAINT `groomer_working_hours_ibfk_1` FOREIGN KEY (`groomerId`) REFERENCES `groomers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  UNIQUE KEY `groomer_hours_code_day_tenant_unique` (`groomerCode`, `dayOfWeek`, `clientId`, `regionId`, `storeId`),
+  KEY `groomer_working_hours_groomer_code` (`groomerCode`),
+  KEY `groomer_working_hours_client_id_region_id_store_id` (`clientId`, `regionId`, `storeId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ---------------------------------------------------------------------------
--- 5. groomer_unavailability
+-- 5. groomer_unavailability (linked by groomerCode)
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `groomer_unavailability` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `groomerId` INT UNSIGNED NOT NULL,
+  `groomerCode` VARCHAR(50) NOT NULL,
   `startDate` DATE NOT NULL,
   `endDate` DATE NOT NULL,
   `startTime` VARCHAR(5) NOT NULL DEFAULT '',
@@ -108,18 +150,25 @@ CREATE TABLE IF NOT EXISTS `groomer_unavailability` (
   `createdAt` DATETIME NOT NULL,
   `updatedAt` DATETIME NOT NULL,
   PRIMARY KEY (`id`),
-  KEY `groomer_unavailability_groomer_id` (`groomerId`),
+  KEY `groomer_unavailability_groomer_code` (`groomerCode`),
   KEY `groomer_unavailability_start_date_end_date` (`startDate`, `endDate`),
-  KEY `groomer_unavailability_client_id_region_id_store_id` (`clientId`, `regionId`, `storeId`),
-  CONSTRAINT `groomer_unavailability_ibfk_1` FOREIGN KEY (`groomerId`) REFERENCES `groomers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY `groomer_unavailability_client_id_region_id_store_id` (`clientId`, `regionId`, `storeId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ---------------------------------------------------------------------------
--- SAMPLE DATA (from groomers.json + holidays.json)
--- Run only if tables are empty. If inserts fail with duplicate key, data already exists.
+-- SAMPLE DATA
 -- ---------------------------------------------------------------------------
+
+INSERT INTO `client_master` (`clientId`, `name`, `isActive`, `createdAt`, `updatedAt`)
+VALUES ('SHEAR-001', 'Shear Heaven', 1, NOW(), NOW());
+
+INSERT INTO `region_master` (`regionId`, `clientId`, `name`, `isActive`, `createdAt`, `updatedAt`)
+VALUES ('DWG-001', 'SHEAR-001', 'Darwin', 1, NOW(), NOW());
+
+INSERT INTO `store_master` (`storeId`, `clientId`, `regionId`, `name`, `isActive`, `createdAt`, `updatedAt`)
+VALUES ('SHEAR-001', 'SHEAR-001', 'DWG-001', 'Shear Heaven Darwin', 1, NOW(), NOW());
 
 INSERT INTO `groomers` (`groomerCode`, `firstName`, `lastName`, `role`, `highlights`, `type`, `isActive`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
 VALUES
@@ -145,33 +194,32 @@ VALUES
   ('Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
 
--- Groomer working hours (assumes groomer ids 1=G001, 2=G002, 3=B001)
-INSERT INTO `groomer_working_hours` (`groomerId`, `dayOfWeek`, `isWorking`, `startTime`, `endTime`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
+INSERT INTO `groomer_working_hours` (`groomerCode`, `dayOfWeek`, `isWorking`, `startTime`, `endTime`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
 VALUES
-  (1, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (1, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (1, 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (1, 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (1, 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (1, 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (1, 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, 'Tuesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, 'Wednesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, 'Thursday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, 'Friday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, 'Saturday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
+  ('G001', 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G001', 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G001', 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G001', 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G001', 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G001', 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G001', 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Tuesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Wednesday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Thursday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Friday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', 'Saturday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
 
-INSERT INTO `groomer_unavailability` (`groomerId`, `startDate`, `endDate`, `startTime`, `endTime`, `reason`, `leaveType`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
+INSERT INTO `groomer_unavailability` (`groomerCode`, `startDate`, `endDate`, `startTime`, `endTime`, `reason`, `leaveType`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
 VALUES
-  (1, '2026-08-19', '2026-08-19', '12:00', '13:00', 'Lunch break', 'break', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (2, '2026-08-20', '2026-08-20', '', '', 'Personal leave', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
-  (3, '2026-09-01', '2026-09-03', '', '', 'Vacation', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
+  ('G001', '2026-08-19', '2026-08-19', '12:00', '13:00', 'Lunch break', 'break', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G002', '2026-08-20', '2026-08-20', '', '', 'Personal leave', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('B001', '2026-09-01', '2026-09-03', '', '', 'Vacation', 'leave', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
