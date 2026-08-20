@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "shear-heaven-api-collection",
     "name": "Shear Heaven API",
-    "description": "Complete Postman collection for the Shear Heaven Node.js + TypeScript REST API.\n\n**Setup:**\n1. Import this collection into Postman.\n2. Set the `baseUrl` variable (default: `http://localhost:5000`).\n3. Run **Login** or **Verify OTP** — tokens are saved automatically to collection variables.\n4. When access token expires (1 day), run **Refresh Access Token** to get a new one.\n5. Authenticated requests use `{{accessToken}}` via Bearer auth.",
+    "description": "Complete Postman collection for the Shear Heaven Node.js + TypeScript REST API.\n\n**Setup:**\n1. Import this collection into Postman.\n2. Set the `baseUrl` variable (default: production URL).\n3. Run **Login** or **Verify OTP** — saves `accessToken` and `refreshToken`.\n4. Run **Groomer Login** for groomer APIs — saves `groomerAccessToken`.\n5. User APIs use `Bearer {{accessToken}}`. Groomer APIs use `Bearer {{groomerAccessToken}}`.\n\n**Booking flow:**\n- Create booking → status `pending` (blocks slot)\n- Groomer approves → `confirmed`\n- User cancel (≥3h before) → pending: `cancelled`; confirmed: `cancellation_requested` → groomer approves → `cancelled`",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -421,7 +421,7 @@
     },
     {
       "name": "Bookings",
-      "description": "Booking and availability APIs. Prices and durations come from service&packages.json. All requests require Bearer {{accessToken}}.\n\nCatalog IDs:\n- Services 1-9 = breed grooming/bathing, 10-13 = walk-in services\n- Packages 1-3\n- Add-ons 1-12\n- Groomers 1-2, Bather 3",
+      "description": "User booking and availability APIs. Requires Bearer {{accessToken}}.\n\n**Status flow:** pending → confirmed (groomer approve) | cancelled\n\n**Slot blocking:** pending + confirmed + cancellation_requested count toward groomer slot limit (multi-booking per groomer settings).\n\n**Cancel rule:** User can cancel only if at least 3 hours remain before appointment (store `cancellationThresholdHours`, default 3). Pending → cancelled immediately. Confirmed → cancellation_requested until groomer approves.\n\nCatalog IDs: services 1-13, packages 1-3, add-ons 1-12, groomers 1-3.",
       "item": [
         {
           "name": "Get Availability",
@@ -440,7 +440,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "availability"]
             },
-            "description": "Returns groomer working hours, already booked timings, service duration, and available time slots.\n\nOmit groomerId or send 0 for all groomers. packageId is optional."
+            "description": "Returns groomer working hours, booked slots, service duration, and available time slots.\n\nPending and confirmed bookings block slots. If groomer multi-booking is enabled, a slot stays available until the slot limit is reached.\n\nOmit groomerId or send 0 for all groomers. packageId is optional."
           }
         },
         {
@@ -536,7 +536,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "bookings", "{{bookingId}}", "cancel"]
             },
-            "description": "Cancel a booking.\n\nPending bookings are cancelled immediately.\n\nConfirmed bookings require groomer approval and must be cancelled at least the store cancellation threshold hours before the appointment (default 3 hours). The status becomes `cancellation_requested` until the groomer approves."
+            "description": "Cancel a booking owned by the authenticated user.\n\n**3-hour rule:** Cancellation is allowed only if at least 3 hours remain before the appointment start time (configurable per store via `cancellationThresholdHours`). Returns 400 if inside the window.\n\n**Pending:** Cancelled immediately when the 3-hour rule passes.\n\n**Confirmed:** Status becomes `cancellation_requested`; groomer must approve via Groomer Auth → Approve Cancellation.\n\n**Not allowed:** Already cancelled, completed, past bookings, or cancellation already pending."
           }
         }
       ]
@@ -573,7 +573,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/login",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "login"]
-            }
+            },
+            "description": "Groomer login with email and password. Saves `groomerAccessToken`.\n\nDefault seed accounts:\n- g001@shearheaven.com / Groomer@123\n- g002@shearheaven.com / Groomer@123\n- b001@shearheaven.com / Groomer@123"
           }
         },
         {
@@ -585,7 +586,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/profile",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "profile"]
-            }
+            },
+            "description": "Returns groomer profile including multi-booking settings (`multiBookingEnabled`, `slotBookingLimit`)."
           }
         },
         {
@@ -598,13 +600,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"multiBookingEnabled\": true,\n  \"slotBookingLimit\": 3\n}"
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Smith\",\n  \"mobile\": \"9876543210\",\n  \"multiBookingEnabled\": true,\n  \"slotBookingLimit\": 3\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/groomer-auth/profile",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "profile"]
-            }
+            },
+            "description": "Update groomer profile. Groomers can enable multi-booking and set per-slot booking limit (e.g. 3 bookings per time slot)."
           }
         },
         {
@@ -616,7 +619,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/pending",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "pending"]
-            }
+            },
+            "description": "Appointment requests waiting for groomer confirmation (status `pending`)."
           }
         },
         {
@@ -628,7 +632,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/upcoming",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "upcoming"]
-            }
+            },
+            "description": "Upcoming bookings for this groomer (pending, confirmed, cancellation_requested)."
           }
         },
         {
@@ -640,7 +645,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/past",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "past"]
-            }
+            },
+            "description": "Past and completed bookings for this groomer."
           }
         },
         {
@@ -652,7 +658,21 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/cancelled",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "cancelled"]
-            }
+            },
+            "description": "Cancelled bookings for this groomer."
+          }
+        },
+        {
+          "name": "Cancellation Requests",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/cancellation-requests",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "cancellation-requests"]
+            },
+            "description": "Returns confirmed bookings where the user requested cancellation (status `cancellation_requested`)."
           }
         },
         {
@@ -664,7 +684,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/approve",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "approve"]
-            }
+            },
+            "description": "Approve a pending booking → status becomes `confirmed`."
           }
         },
         {
@@ -676,7 +697,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/reject",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "reject"]
-            }
+            },
+            "description": "Reject a pending booking → status becomes `cancelled`."
           }
         },
         {
@@ -688,7 +710,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/approve-cancellation",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "approve-cancellation"]
-            }
+            },
+            "description": "Approve a user's cancellation request → status becomes `cancelled`."
           }
         },
         {
@@ -700,7 +723,8 @@
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/reject-cancellation",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "reject-cancellation"]
-            }
+            },
+            "description": "Reject a cancellation request → booking returns to `confirmed`."
           }
         }
       ]
@@ -921,13 +945,14 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"storeId\": \"SHEAR-001\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"name\": \"Shear Heaven Darwin\",\n  \"isActive\": true\n}"
+                  "raw": "{\n  \"storeId\": \"SHEAR-001\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"name\": \"Shear Heaven Darwin\",\n  \"isActive\": true,\n  \"cancellationThresholdHours\": 3\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/admin/stores",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "admin", "stores"]
-                }
+                },
+                "description": "Create store. `cancellationThresholdHours` sets how many hours before appointment a user can cancel (default 3)."
               }
             },
             {
@@ -937,7 +962,7 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"Shear Heaven Darwin\"\n}"
+                  "raw": "{\n  \"name\": \"Shear Heaven Darwin\",\n  \"cancellationThresholdHours\": 3\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/admin/stores/{{scheduleRecordId}}",
@@ -975,13 +1000,14 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"groomerCode\": \"G003\",\n  \"firstName\": \"Alex\",\n  \"lastName\": \"Taylor\",\n  \"role\": \"Groomer\",\n  \"highlights\": \"New team member\",\n  \"type\": \"Groomer\",\n  \"isActive\": true,\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
+                  "raw": "{\n  \"groomerCode\": \"G003\",\n  \"firstName\": \"Alex\",\n  \"lastName\": \"Taylor\",\n  \"email\": \"g003@shearheaven.com\",\n  \"password\": \"Groomer@123\",\n  \"mobile\": \"9876543210\",\n  \"role\": \"Groomer\",\n  \"highlights\": \"New team member\",\n  \"type\": \"Groomer\",\n  \"isActive\": true,\n  \"multiBookingEnabled\": false,\n  \"slotBookingLimit\": 1,\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/admin/groomers",
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "admin", "groomers"]
-                }
+                },
+                "description": "Create groomer with login credentials and multi-booking settings."
               }
             },
             {
@@ -991,7 +1017,7 @@
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"role\": \"Lead Groomer\",\n  \"highlights\": \"Updated highlights\",\n  \"isActive\": true\n}"
+                  "raw": "{\n  \"role\": \"Lead Groomer\",\n  \"highlights\": \"Updated highlights\",\n  \"multiBookingEnabled\": true,\n  \"slotBookingLimit\": 3,\n  \"isActive\": true\n}"
                 },
                 "url": {
                   "raw": "{{baseUrl}}/api/admin/groomers/{{groomerId}}",

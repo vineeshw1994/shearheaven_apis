@@ -450,24 +450,25 @@ export async function cancelBooking(userId: number, bookingId: number): Promise<
     throw new AppError('Past bookings cannot be cancelled', 400);
   }
 
+  const thresholdHours = await getStoreCancellationThreshold(
+    booking.clientId,
+    booking.regionId,
+    booking.storeId
+  );
+  const hoursLeft = hoursUntilBooking(booking.bookingDate, booking.startTime);
+  if (hoursLeft < thresholdHours) {
+    throw new AppError(
+      `Bookings can only be cancelled at least ${thresholdHours} hour(s) before the appointment time`,
+      400
+    );
+  }
+
   if (booking.status === 'pending') {
     await booking.update({ status: 'cancelled' });
     return formatBooking(booking);
   }
 
   if (booking.status === 'confirmed') {
-    const thresholdHours = await getStoreCancellationThreshold(
-      booking.clientId,
-      booking.regionId,
-      booking.storeId
-    );
-    const hoursLeft = hoursUntilBooking(booking.bookingDate, booking.startTime);
-    if (hoursLeft < thresholdHours) {
-      throw new AppError(
-        `Confirmed bookings can only be cancelled at least ${thresholdHours} hour(s) before the appointment`,
-        400
-      );
-    }
     await booking.update({ status: 'cancellation_requested' });
     return formatBooking(booking);
   }
