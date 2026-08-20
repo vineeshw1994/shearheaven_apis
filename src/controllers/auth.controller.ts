@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service';
 import { sendSuccess } from '../utils/response';
-import { signupSchema, loginSchema, refreshTokenSchema, sendOtpSchema, verifyOtpSchema } from '../utils/validation';
+import { signupSchema, loginSchema, refreshTokenSchema, sendOtpSchema, verifyOtpSchema, profileUpdateSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
 import { validateBody } from '../utils/validation';
 import { AuthRequest } from '../types/express';
 
@@ -76,6 +76,48 @@ export async function logout(req: AuthRequest, res: Response, next: NextFunction
     const refreshToken = req.body.refreshToken as string | undefined;
     await authService.logoutUser(req.user!.id, refreshToken);
     sendSuccess(res, 'Logout successful');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const profile = await authService.getUserProfile(req.user!.id);
+    sendSuccess(res, 'Profile retrieved successfully', profile);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateProfile(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<authService.ProfileUpdateInput>(profileUpdateSchema, req.body);
+    const profile = await authService.updateUserProfile(req.user!.id, data);
+    sendSuccess(res, 'Profile updated successfully', profile);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function forgotPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { email } = validateBody<{ email: string }>(forgotPasswordSchema, req.body);
+    const result = await authService.checkForgotPasswordEmail(email);
+    sendSuccess(res, 'Email verification completed', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { email, password } = validateBody<{ email: string; password: string }>(
+      resetPasswordSchema,
+      req.body
+    );
+    const result = await authService.resetUserPassword(email, password);
+    sendSuccess(res, 'Password updated successfully', result);
   } catch (error) {
     next(error);
   }

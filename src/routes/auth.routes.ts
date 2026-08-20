@@ -9,6 +9,9 @@ import {
   refreshTokenSchema,
   sendOtpSchema,
   verifyOtpSchema,
+  profileUpdateSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } from '../utils/validation';
 
 const router = Router();
@@ -123,5 +126,45 @@ router.post('/verify-otp', validate(verifyOtpSchema), authController.verifyOtp);
  *       - bearerAuth: []
  */
 router.post('/logout', authenticate, authController.logout);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Get authenticated user profile
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/profile', authenticate, authController.getProfile);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   put:
+ *     tags: [Auth]
+ *     summary: Update authenticated user profile
+ *     security:
+ *       - bearerAuth: []
+ */
+router.put('/profile', authenticate, validate(profileUpdateSchema), authController.updateProfile);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Check if email exists for password reset
+ */
+router.post('/forgot-password', validate(forgotPasswordSchema), authController.forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Reset password after email verification
+ */
+router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
 
 export default router;

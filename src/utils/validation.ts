@@ -53,6 +53,27 @@ export const verifyOtpSchema = Joi.object({
   }),
 });
 
+export const profileUpdateSchema = Joi.object({
+  name: Joi.string().trim().min(2).max(100).optional(),
+  mobile: mobileSchema.optional(),
+})
+  .min(1)
+  .messages({
+    'object.min': 'At least one field is required to update profile',
+  });
+
+export const forgotPasswordSchema = Joi.object({
+  email: Joi.string().trim().email().required(),
+});
+
+export const resetPasswordSchema = Joi.object({
+  email: Joi.string().trim().email().required(),
+  password: passwordSchema.required(),
+  confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
+    'any.only': 'Password and confirm password must match',
+  }),
+});
+
 export const petSchema = Joi.object({
   petName: Joi.string().trim().min(1).max(100).required(),
   breed: Joi.string().trim().min(1).max(100).required(),

@@ -332,4 +332,78 @@ export async function logoutUser(userId: number, refreshToken?: string) {
   );
 }
 
+export async function getUserProfile(userId: number): Promise<Record<string, unknown>> {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+  return user.toSafeJSON();
+}
+
+export interface ProfileUpdateInput {
+  name?: string;
+  mobile?: string;
+}
+
+export async function updateUserProfile(
+  userId: number,
+  input: ProfileUpdateInput
+): Promise<Record<string, unknown>> {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  const updates: Partial<{ name: string; mobile: string }> = {};
+
+  if (input.name !== undefined) {
+    updates.name = input.name;
+  }
+
+  if (input.mobile !== undefined && input.mobile !== user.mobile) {
+    const existingMobile = await User.findOne({
+      where: {
+        mobile: input.mobile,
+        id: { [Op.ne]: userId },
+      },
+    });
+    if (existingMobile) {
+      throw new ConflictError('Mobile number is already registered');
+    }
+    updates.mobile = input.mobile;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return user.toSafeJSON();
+  }
+
+  await user.update(updates);
+  return user.toSafeJSON();
+}
+
+export async function checkForgotPasswordEmail(email: string): Promise<{ exists: boolean }> {
+  const user = await User.findOne({ where: { email } });
+  return { exists: Boolean(user) };
+}
+
+export async function resetUserPassword(
+  email: string,
+  password: string
+): Promise<{ email: string }> {
+  const user = await User.findOne({ where: { email } });
+  if (!user) {
+    throw new NotFoundError('No account found with this email');
+  }
+
+  const hashedPassword = await hashPassword(password);
+  await user.update({ password: hashedPassword });
+
+  await RefreshToken.update(
+    { revoked: true },
+    { where: { userId: user.id, revoked: false } }
+  );
+
+  return { email: user.email };
+}
+
 export { generateOtp, getOtpExpiryDate };
