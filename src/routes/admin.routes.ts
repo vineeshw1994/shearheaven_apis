@@ -53,4 +53,6 @@ router.post('/groomer-unavailability', adminController.createUnavailability);
 router.put('/groomer-unavailability/:id', adminController.updateUnavailability);
 router.delete('/groomer-unavailability/:id', adminController.deleteUnavailability);
 
+router.get('/groomer-bookings/:groomerId', adminController.getGroomerBookings);
+
 export default router;

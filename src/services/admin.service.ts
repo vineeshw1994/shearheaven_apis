@@ -128,17 +128,47 @@ export async function deleteStore(id: number) {
 }
 
 export async function listGroomers(query: TenantInput) {
-  return listRows(Groomer, tenantFilter(query), [['id', 'ASC']]);
+  const rows = await listRows(Groomer, tenantFilter(query), [['id', 'ASC']]);
+  return rows.map((row) => {
+    const data = row.toJSON() as Record<string, unknown>;
+    delete data.password;
+    return data;
+  });
 }
 
 export async function createGroomer(body: TenantInput & Record<string, unknown>) {
-  return Groomer.create(withTenant(body) as never);
+  const payload = withTenant(body) as Record<string, unknown>;
+  if (payload.password) {
+    const { hashPassword } = await import('../utils/crypto');
+    payload.password = await hashPassword(String(payload.password));
+  }
+  if (payload.email) {
+    payload.email = String(payload.email).trim().toLowerCase();
+  }
+  const row = await Groomer.create(payload as never);
+  return sanitizeGroomerRow(row);
 }
 
 export async function updateGroomer(id: number, body: Record<string, unknown>) {
   const row = await getRow(Groomer, id);
-  await row.update(body);
-  return row;
+  const payload = { ...body };
+  if (payload.password) {
+    const { hashPassword } = await import('../utils/crypto');
+    payload.password = await hashPassword(String(payload.password));
+  } else {
+    delete payload.password;
+  }
+  if (payload.email) {
+    payload.email = String(payload.email).trim().toLowerCase();
+  }
+  await row.update(payload);
+  return sanitizeGroomerRow(row);
+}
+
+function sanitizeGroomerRow(row: Groomer) {
+  const data = row.toJSON() as Record<string, unknown>;
+  delete data.password;
+  return data;
 }
 
 export async function deleteGroomer(id: number) {

@@ -164,6 +164,40 @@ th { background: #eef4f1; color: var(--muted); font-weight: 700; }
 
 .row-actions { display: flex; gap: 6px; }
 
+.groomer-bookings-panel {
+  display: grid;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.groomer-bookings-panel label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.booking-section {
+  margin-top: 12px;
+}
+
+.booking-section h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.booking-section table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.booking-section th,
+.booking-section td {
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 13px;
+}
+
 @media (max-width: 800px) {
   .topbar, main { padding-left: 16px; padding-right: 16px; }
   #editForm { grid-template-columns: 1fr; }

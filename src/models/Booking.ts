@@ -83,9 +83,9 @@ Booking.init(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM('confirmed', 'cancelled', 'completed'),
+      type: DataTypes.ENUM('pending', 'confirmed', 'cancelled', 'completed', 'cancellation_requested'),
       allowNull: false,
-      defaultValue: 'confirmed',
+      defaultValue: 'pending',
     },
     totalDurationMinutes: {
       type: DataTypes.INTEGER.UNSIGNED,

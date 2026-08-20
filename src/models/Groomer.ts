@@ -12,10 +12,15 @@ class Groomer extends Model<InferAttributes<Groomer>, InferCreationAttributes<Gr
   declare groomerCode: string;
   declare firstName: string;
   declare lastName: string;
+  declare email: CreationOptional<string>;
+  declare password: CreationOptional<string>;
+  declare mobile: CreationOptional<string>;
   declare role: string;
   declare highlights: CreationOptional<string>;
   declare type: CreationOptional<'Groomer' | 'Bather'>;
   declare isActive: CreationOptional<boolean>;
+  declare multiBookingEnabled: CreationOptional<boolean>;
+  declare slotBookingLimit: CreationOptional<number>;
   declare clientId: string;
   declare regionId: string;
   declare storeId: string;
@@ -40,6 +45,21 @@ Groomer.init(
       type: DataTypes.STRING(100),
       allowNull: false,
     },
+    email: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      defaultValue: '',
+    },
+    password: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      defaultValue: '',
+    },
+    mobile: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: '',
+    },
     role: {
       type: DataTypes.STRING(100),
       allowNull: false,
@@ -59,6 +79,16 @@ Groomer.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    multiBookingEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    slotBookingLimit: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 1,
     },
     clientId: {
       type: DataTypes.STRING(50),

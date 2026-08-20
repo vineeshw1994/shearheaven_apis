@@ -25,23 +25,29 @@ const resources = {
   stores: {
     title: 'Store Master',
     path: '/api/admin/stores',
-    columns: ['id', 'storeId', 'name', 'clientId', 'regionId', 'isActive'],
+    columns: ['id', 'storeId', 'name', 'clientId', 'regionId', 'isActive', 'cancellationThresholdHours'],
     fields: [
       { name: 'storeId', label: 'StoreId', required: true },
       { name: 'name', label: 'Name', required: true },
       { name: 'clientId', label: 'ClientID', required: true },
       { name: 'regionId', label: 'RegionId', required: true },
       { name: 'isActive', label: 'Active', type: 'checkbox' },
+      { name: 'cancellationThresholdHours', label: 'Cancel Threshold (hours)', type: 'number' },
     ],
   },
   groomers: {
     title: 'Groomers',
     path: '/api/admin/groomers',
-    columns: ['id', 'groomerCode', 'firstName', 'lastName', 'role', 'type', 'isActive', 'clientId', 'regionId', 'storeId'],
+    columns: ['id', 'groomerCode', 'firstName', 'lastName', 'email', 'multiBookingEnabled', 'slotBookingLimit', 'role', 'type', 'isActive'],
     fields: [
       { name: 'groomerCode', label: 'Groomer Code', required: true },
       { name: 'firstName', label: 'First Name', required: true },
       { name: 'lastName', label: 'Last Name', required: true },
+      { name: 'email', label: 'Email' },
+      { name: 'password', label: 'Password', type: 'password' },
+      { name: 'mobile', label: 'Mobile' },
+      { name: 'multiBookingEnabled', label: 'Multi Booking Enabled', type: 'checkbox' },
+      { name: 'slotBookingLimit', label: 'Slot Booking Limit', type: 'number' },
       { name: 'role', label: 'Role' },
       { name: 'highlights', label: 'Highlights' },
       { name: 'type', label: 'Type', type: 'select', options: ['Groomer', 'Bather'] },
@@ -50,6 +56,10 @@ const resources = {
       { name: 'regionId', label: 'RegionId' },
       { name: 'storeId', label: 'StoreId' },
     ],
+  },
+  groomerBookings: {
+    title: 'Groomer Bookings',
+    custom: true,
   },
   holidays: {
     title: 'Holiday List',
@@ -114,7 +124,7 @@ const resources = {
   },
 };
 
-const tabOrder = ['clients', 'regions', 'stores', 'groomers', 'holidays', 'storeHours', 'groomerHours', 'unavailability'];
+const tabOrder = ['clients', 'regions', 'stores', 'groomers', 'groomerBookings', 'holidays', 'storeHours', 'groomerHours', 'unavailability'];
 let currentKey = 'clients';
 let rows = [];
 let groomers = [];
@@ -189,6 +199,12 @@ function renderTabs() {
 function renderTable() {
   const resource = resources[currentKey];
   titleEl.textContent = resource.title;
+
+  if (resource.custom && currentKey === 'groomerBookings') {
+    renderGroomerBookingsView();
+    return;
+  }
+
   headEl.innerHTML = `<tr>${resource.columns.map((col) => `<th>${col}</th>`).join('')}<th></th></tr>`;
   bodyEl.innerHTML = rows
     .map((row) => {
@@ -238,7 +254,15 @@ function openModal(id) {
           ${options.map((option) => `<option value="${option.value}" ${String(option.value) === String(value) ? 'selected' : ''}>${option.label}</option>`).join('')}
         </select></label>`;
       }
-      const inputType = field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text';
+      const inputType = field.type === 'date'
+        ? 'date'
+        : field.type === 'time'
+          ? 'time'
+          : field.type === 'number'
+            ? 'number'
+            : field.type === 'password'
+              ? 'password'
+              : 'text';
       return `<label>${field.label}<input type="${inputType}" name="${field.name}" value="${value || ''}" ${field.required ? 'required' : ''} /></label>`;
     })
     .join('');
@@ -267,6 +291,16 @@ function readForm() {
       data[field.name] = String(input.value).slice(0, 5);
       return;
     }
+    if (field.type === 'number' && input.value !== '') {
+      data[field.name] = Number(input.value);
+      return;
+    }
+    if (field.type === 'password') {
+      if (input.value) {
+        data[field.name] = input.value;
+      }
+      return;
+    }
     data[field.name] = input.value;
   });
   return data;
@@ -282,6 +316,15 @@ async function loadTable() {
     setStatus('Loading...');
     await loadGroomers();
     const resource = resources[currentKey];
+
+    if (resource.custom && currentKey === 'groomerBookings') {
+      document.getElementById('addBtn').style.display = 'none';
+      renderGroomerBookingsView();
+      setStatus('');
+      return;
+    }
+
+    document.getElementById('addBtn').style.display = '';
     const query = tenantQuery();
     rows = (await api(`${resource.path}${query ? `?${query}` : ''}`)) || [];
     renderTable();
@@ -290,6 +333,77 @@ async function loadTable() {
     rows = [];
     renderTable();
     setStatus(error.message, true);
+  }
+}
+
+function bookingSection(title, items) {
+  const rowsHtml = (items || [])
+    .map(
+      (item) => `<tr>
+        <td>${item.bookingId}</td>
+        <td>${item.status}</td>
+        <td>${item.bookingDate}</td>
+        <td>${item.startTime} - ${item.endTime}</td>
+        <td>${item.pet?.petName || '-'}</td>
+        <td>${item.user?.name || '-'}</td>
+        <td>${item.serviceName || '-'}</td>
+      </tr>`
+    )
+    .join('');
+  return `<section class="booking-section">
+    <h3>${title} (${(items || []).length})</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Time</th><th>Pet</th><th>Customer</th><th>Service</th></tr></thead>
+      <tbody>${rowsHtml || '<tr><td colspan="7">No bookings</td></tr>'}</tbody>
+    </table>
+  </section>`;
+}
+
+async function renderGroomerBookingsView() {
+  headEl.innerHTML = '';
+  bodyEl.innerHTML = '<tr><td>Loading groomer bookings...</td></tr>';
+
+  const options = groomers
+    .map((item) => `<option value="${item.id}">${item.groomerCode} - ${item.firstName} ${item.lastName}</option>`)
+    .join('');
+
+  bodyEl.innerHTML = `<tr><td colspan="20">
+    <div class="groomer-bookings-panel">
+      <label>Groomer
+        <select id="groomerBookingSelect">${options}</select>
+      </label>
+      <button type="button" id="loadGroomerBookingsBtn">Load Bookings</button>
+      <div id="groomerBookingsContent"></div>
+    </div>
+  </td></tr>`;
+
+  const selectEl = document.getElementById('groomerBookingSelect');
+  const loadBtn = document.getElementById('loadGroomerBookingsBtn');
+  const contentEl = document.getElementById('groomerBookingsContent');
+
+  async function loadSelectedGroomerBookings() {
+    const groomerId = Number(selectEl.value);
+    if (!groomerId) return;
+    contentEl.innerHTML = 'Loading...';
+    try {
+      const data = await api(`/api/admin/groomer-bookings/${groomerId}`);
+      contentEl.innerHTML = [
+        bookingSection('Pending Requests', data.pending),
+        bookingSection('Cancellation Requests', data.cancellationRequests),
+        bookingSection('Upcoming', data.upcoming),
+        bookingSection('Past', data.past),
+        bookingSection('Cancelled', data.cancelled),
+      ].join('');
+      setStatus(`Loaded bookings for ${data.groomer.firstName} ${data.groomer.lastName}`);
+    } catch (error) {
+      contentEl.innerHTML = '';
+      setStatus(error.message, true);
+    }
+  }
+
+  loadBtn.addEventListener('click', loadSelectedGroomerBookings);
+  if (selectEl.value) {
+    await loadSelectedGroomerBookings();
   }
 }
 

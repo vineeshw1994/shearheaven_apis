@@ -14,6 +14,7 @@ class StoreMaster extends Model<InferAttributes<StoreMaster>, InferCreationAttri
   declare regionId: string;
   declare name: string;
   declare isActive: CreationOptional<boolean>;
+  declare cancellationThresholdHours: CreationOptional<number>;
 }
 
 StoreMaster.init(
@@ -44,14 +45,23 @@ StoreMaster.init(
       allowNull: false,
       defaultValue: true,
     },
+    cancellationThresholdHours: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+      defaultValue: 3,
+    },
   },
   {
     sequelize,
     tableName: 'store_master',
     timestamps: true,
     indexes: [
-      { unique: true, fields: ['storeId', 'clientId', 'regionId'] },
-      { fields: ['clientId', 'regionId'] },
+      {
+        unique: true,
+        name: 'store_master_store_tenant_unique',
+        fields: ['storeId', 'clientId', 'regionId'],
+      },
+      { name: 'store_master_tenant', fields: ['clientId', 'regionId'] },
     ],
   }
 );

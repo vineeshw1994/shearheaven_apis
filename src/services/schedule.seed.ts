@@ -100,6 +100,65 @@ async function migrateTableToGroomerCode(table: string): Promise<void> {
 export async function alignScheduleSchema(): Promise<void> {
   await migrateTableToGroomerCode('groomer_working_hours');
   await migrateTableToGroomerCode('groomer_unavailability');
+  await alignBookingFlowSchema();
+}
+
+async function addColumnIfMissing(
+  table: string,
+  column: string,
+  definition: string
+): Promise<void> {
+  if (!(await tableExists(table))) {
+    return;
+  }
+  if (!(await hasColumn(table, column))) {
+    await sequelize.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+  }
+}
+
+async function alignBookingFlowSchema(): Promise<void> {
+  await addColumnIfMissing('groomers', 'email', 'VARCHAR(255) NOT NULL DEFAULT ""');
+  await addColumnIfMissing('groomers', 'password', 'VARCHAR(255) NOT NULL DEFAULT ""');
+  await addColumnIfMissing('groomers', 'mobile', 'VARCHAR(20) NOT NULL DEFAULT ""');
+  await addColumnIfMissing('groomers', 'multiBookingEnabled', 'TINYINT(1) NOT NULL DEFAULT 0');
+  await addColumnIfMissing('groomers', 'slotBookingLimit', 'INT UNSIGNED NOT NULL DEFAULT 1');
+  await addColumnIfMissing(
+    'store_master',
+    'cancellationThresholdHours',
+    'INT UNSIGNED NOT NULL DEFAULT 3'
+  );
+
+  if (await tableExists('bookings')) {
+    await sequelize.query(`
+      ALTER TABLE \`bookings\`
+      MODIFY COLUMN \`status\` ENUM(
+        'pending',
+        'confirmed',
+        'cancelled',
+        'completed',
+        'cancellation_requested'
+      ) NOT NULL DEFAULT 'pending'
+    `);
+  }
+
+  await seedGroomerCredentials();
+}
+
+async function seedGroomerCredentials(): Promise<void> {
+  const { hashPassword } = await import('../utils/crypto');
+  const defaultPassword = await hashPassword('Groomer@123');
+  const groomers = await Groomer.findAll({ order: [['id', 'ASC']] });
+
+  for (const groomer of groomers) {
+    const code = groomer.groomerCode.toLowerCase();
+    const email = groomer.email || `${code}@shearheaven.com`;
+    const updates: Record<string, unknown> = {};
+    if (!groomer.email) updates.email = email;
+    if (!groomer.password) updates.password = defaultPassword;
+    if (Object.keys(updates).length > 0) {
+      await groomer.update(updates);
+    }
+  }
 }
 
 async function seedMasters(): Promise<void> {
@@ -126,6 +185,7 @@ async function seedMasters(): Promise<void> {
     regionId: DEFAULT_TENANT.regionId,
     name: 'Shear Heaven Darwin',
     isActive: true,
+    cancellationThresholdHours: 3,
   });
 
   logger.info('Client, region, and store master sample data seeded');

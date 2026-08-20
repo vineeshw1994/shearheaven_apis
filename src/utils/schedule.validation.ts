@@ -36,10 +36,15 @@ export const groomerCreateSchema = Joi.object({
   groomerCode: Joi.string().trim().max(50).required(),
   firstName: Joi.string().trim().max(100).required(),
   lastName: Joi.string().trim().max(100).required(),
+  email: Joi.string().trim().email().allow('').optional(),
+  password: Joi.string().min(6).optional(),
+  mobile: Joi.string().trim().max(20).allow('').optional(),
   role: Joi.string().trim().max(100).allow('').optional(),
   highlights: Joi.string().trim().max(500).allow('').optional(),
   type: Joi.string().valid('Groomer', 'Bather').optional(),
   isActive: Joi.boolean().optional(),
+  multiBookingEnabled: Joi.boolean().optional(),
+  slotBookingLimit: Joi.number().integer().min(1).max(20).optional(),
   ...tenantSchema,
 });
 
@@ -134,6 +139,7 @@ export const storeMasterCreateSchema = Joi.object({
   storeId: Joi.string().trim().max(50).required(),
   name: Joi.string().trim().max(150).required(),
   isActive: Joi.boolean().optional(),
+  cancellationThresholdHours: Joi.number().integer().min(0).max(168).optional(),
   ClientID: Joi.string().max(50).allow('').optional(),
   RegionId: Joi.string().max(50).allow('').optional(),
   clientId: Joi.string().max(50).allow('').optional(),

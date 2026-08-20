@@ -13,6 +13,7 @@
     { "key": "bookingId", "value": "", "type": "string" },
     { "key": "groomerId", "value": "1", "type": "string" },
     { "key": "groomerCode", "value": "G001", "type": "string" },
+    { "key": "groomerAccessToken", "value": "", "type": "string" },
     { "key": "scheduleRecordId", "value": "1", "type": "string" }
   ],
   "auth": {
@@ -475,7 +476,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "bookings"]
             },
-            "description": "Create a booking for the authenticated user's pet.\n\nSlot duration comes from the selected service. Price is service + optional package + add-ons from service&packages.json.\n\nendTime must equal startTime + service duration (15:00 to 16:00 for a 60-minute service).\n\nIf the app has No Preference for groomer, send groomerId: 0 and the API picks the first available groomer.\n\nValid catalog IDs: services 1-13, packages 1-3, add-ons 1-12, groomers 1-3.\n\nResponse:\n```json\n{\n  \"success\": true,\n  \"message\": \"Booking created successfully\",\n  \"data\": {\n    \"bookingId\": 1042,\n    \"status\": \"confirmed\",\n    \"totalDurationMinutes\": 60,\n    \"totalPrice\": 64.00\n  }\n}\n```"
+            "description": "Create a booking for the authenticated user's pet.\n\nNew bookings start with status `pending` and wait for groomer confirmation.\n\nSlot duration comes from the selected service. Price is service + optional package + add-ons from service&packages.json.\n\nendTime must equal startTime + service duration (15:00 to 16:00 for a 60-minute service).\n\nIf the app has No Preference for groomer, send groomerId: 0 and the API picks the first available groomer.\n\nValid catalog IDs: services 1-13, packages 1-3, add-ons 1-12, groomers 1-3.\n\nResponse:\n```json\n{\n  \"success\": true,\n  \"message\": \"Booking created successfully\",\n  \"data\": {\n    \"bookingId\": 1042,\n    \"status\": \"pending\",\n    \"totalDurationMinutes\": 60,\n    \"totalPrice\": 64.00\n  }\n}\n```"
           }
         },
         {
@@ -490,7 +491,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "bookings", "upcoming"]
             },
-            "description": "Returns the authenticated user's upcoming confirmed bookings (today remaining + future dates)."
+            "description": "Returns the authenticated user's upcoming bookings (pending, confirmed, cancellation_requested)."
           }
         },
         {
@@ -535,7 +536,171 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "bookings", "{{bookingId}}", "cancel"]
             },
-            "description": "Cancel an upcoming confirmed booking belonging to the authenticated user. Past and already cancelled bookings cannot be cancelled."
+            "description": "Cancel a booking.\n\nPending bookings are cancelled immediately.\n\nConfirmed bookings require groomer approval and must be cancelled at least the store cancellation threshold hours before the appointment (default 3 hours). The status becomes `cancellation_requested` until the groomer approves."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Groomer Auth",
+      "description": "Groomer login and booking management. Default seed logins: g001@shearheaven.com / Groomer@123 (g002, b001 similarly).",
+      "item": [
+        {
+          "name": "Groomer Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "  pm.collectionVariables.set('groomerAccessToken', json.data.accessToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"g001@shearheaven.com\",\n  \"password\": \"Groomer@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Groomer Profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Groomer Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"multiBookingEnabled\": true,\n  \"slotBookingLimit\": 3\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Pending Booking Requests",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "pending"]
+            }
+          }
+        },
+        {
+          "name": "Upcoming Bookings",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/upcoming",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "upcoming"]
+            }
+          }
+        },
+        {
+          "name": "Past Bookings",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/past",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "past"]
+            }
+          }
+        },
+        {
+          "name": "Cancelled Bookings",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/cancelled",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "cancelled"]
+            }
+          }
+        },
+        {
+          "name": "Approve Booking",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Reject Booking",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "Approve Cancellation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/approve-cancellation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "approve-cancellation"]
+            }
+          }
+        },
+        {
+          "name": "Reject Cancellation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/reject-cancellation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "reject-cancellation"]
+            }
           }
         }
       ]
@@ -845,6 +1010,19 @@
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "admin", "groomers", "{{groomerId}}"]
                 }
+              }
+            },
+            {
+              "name": "Get Groomer Bookings",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/groomer-bookings/{{groomerId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "groomer-bookings", "{{groomerId}}"]
+                },
+                "description": "Returns pending requests, cancellation requests, upcoming, past, and cancelled bookings for a groomer."
               }
             }
           ]

@@ -11,6 +11,22 @@ export interface RefreshTokenPayload {
   tokenId: number;
 }
 
+export interface GroomerAccessTokenPayload {
+  groomerId: number;
+  email: string;
+  role: 'groomer';
+}
+
+export function generateGroomerAccessToken(payload: GroomerAccessTokenPayload): string {
+  return jwt.sign(payload, env.jwt.accessSecret, {
+    expiresIn: env.jwt.accessExpiresIn,
+  } as jwt.SignOptions);
+}
+
+export function verifyGroomerAccessToken(token: string): GroomerAccessTokenPayload {
+  return jwt.verify(token, env.jwt.accessSecret) as GroomerAccessTokenPayload;
+}
+
 export function generateAccessToken(payload: AccessTokenPayload): string {
   return jwt.sign(payload, env.jwt.accessSecret, {
     expiresIn: env.jwt.accessExpiresIn,

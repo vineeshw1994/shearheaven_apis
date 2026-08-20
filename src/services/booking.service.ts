@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Booking, Pet } from '../models';
+import { Booking, Pet, Groomer, StoreMaster, User } from '../models';
 import {
   AppError,
   ConflictError,
@@ -52,19 +52,23 @@ export interface AvailabilityInput {
 }
 
 const SLOT_INTERVAL_MINUTES = 15;
+const SLOT_BLOCKING_STATUSES = ['pending', 'confirmed', 'cancellation_requested'];
 
 function overlaps(startA: number, endA: number, startB: number, endB: number): boolean {
   return startA < endB && endA > startB;
 }
 
-function tenantFrom(input: {
-  ClientId?: string;
-  RegionId?: string;
-  StoreId?: string;
-  clientId?: string;
-  regionId?: string;
-  storeId?: string;
-}, fallback: { clientId: string; regionId: string; storeId: string }) {
+function tenantFrom(
+  input: {
+    ClientId?: string;
+    RegionId?: string;
+    StoreId?: string;
+    clientId?: string;
+    regionId?: string;
+    storeId?: string;
+  },
+  fallback: { clientId: string; regionId: string; storeId: string }
+) {
   return {
     clientId: input.ClientId || input.clientId || fallback.clientId,
     regionId: input.RegionId || input.regionId || fallback.regionId,
@@ -72,10 +76,36 @@ function tenantFrom(input: {
   };
 }
 
+async function getGroomerSlotSettings(groomerId: number) {
+  const groomer = await Groomer.findByPk(groomerId);
+  if (!groomer) {
+    return { multiBookingEnabled: false, slotBookingLimit: 1 };
+  }
+  const limit = groomer.multiBookingEnabled ? Math.max(1, groomer.slotBookingLimit || 1) : 1;
+  return {
+    multiBookingEnabled: groomer.multiBookingEnabled,
+    slotBookingLimit: limit,
+  };
+}
+
+async function getStoreCancellationThreshold(
+  clientId: string,
+  regionId: string,
+  storeId: string
+): Promise<number> {
+  const store = await StoreMaster.findOne({ where: { clientId, regionId, storeId } });
+  return store?.cancellationThresholdHours ?? 3;
+}
+
+function hoursUntilBooking(bookingDate: string, startTime: string): number {
+  const appointment = new Date(`${bookingDate}T${startTime}:00`);
+  return (appointment.getTime() - Date.now()) / (1000 * 60 * 60);
+}
+
 async function getBookedSlots(date: string, groomerId?: number) {
   const where: Record<string, unknown> = {
     bookingDate: date,
-    status: { [Op.ne]: 'cancelled' },
+    status: { [Op.in]: SLOT_BLOCKING_STATUSES },
   };
 
   if (groomerId) {
@@ -92,7 +122,27 @@ async function getBookedSlots(date: string, groomerId?: number) {
     groomerId: booking.groomerId,
     startTime: booking.startTime,
     endTime: booking.endTime,
+    status: booking.status,
   }));
+}
+
+function countOverlappingSlots(
+  slots: Array<{ startTime: string; endTime: string }>,
+  startMinutes: number,
+  endMinutes: number
+): number {
+  return slots.filter((slot) =>
+    overlaps(startMinutes, endMinutes, timeToMinutes(slot.startTime), timeToMinutes(slot.endTime))
+  ).length;
+}
+
+function isSlotAvailable(
+  groomerBookings: Array<{ startTime: string; endTime: string }>,
+  startMinutes: number,
+  endMinutes: number,
+  slotLimit: number
+): boolean {
+  return countOverlappingSlots(groomerBookings, startMinutes, endMinutes) < slotLimit;
 }
 
 function assertStoreIsOpen(date: string) {
@@ -131,6 +181,11 @@ export async function getAvailability(input: AvailabilityInput): Promise<Record<
     : getCatalogGroomers();
 
   const bookedSlots = await getBookedSlots(input.date, requestedGroomerId || undefined);
+  const groomerLimits = new Map<number, number>();
+  for (const groomer of groomers) {
+    const settings = await getGroomerSlotSettings(groomer.id);
+    groomerLimits.set(groomer.id, settings.slotBookingLimit);
+  }
 
   if (holiday || workingHours.closed) {
     return {
@@ -163,6 +218,7 @@ export async function getAvailability(input: AvailabilityInput): Promise<Record<
 
   for (const groomer of groomers) {
     const groomerBookings = bookedSlots.filter((slot) => slot.groomerId === groomer.id);
+    const slotLimit = groomerLimits.get(groomer.id) || 1;
 
     for (
       let start = openMinutes;
@@ -170,11 +226,7 @@ export async function getAvailability(input: AvailabilityInput): Promise<Record<
       start += SLOT_INTERVAL_MINUTES
     ) {
       const end = start + quote.totalDurationMinutes;
-      const hasConflict = groomerBookings.some((slot) =>
-        overlaps(start, end, timeToMinutes(slot.startTime), timeToMinutes(slot.endTime))
-      );
-
-      if (!hasConflict) {
+      if (isSlotAvailable(groomerBookings, start, end, slotLimit)) {
         availableSlots.push({
           startTime: minutesToTime(start),
           endTime: minutesToTime(end),
@@ -225,6 +277,7 @@ export async function createBooking(
   const workingHours = assertStoreIsOpen(input.bookingDate);
   const quote = calculateQuote(input.serviceId, input.packageId, input.addOnIds || []);
   const groomerId = resolveGroomerId(input.groomerId);
+  const slotSettings = await getGroomerSlotSettings(groomerId);
 
   const startMinutes = timeToMinutes(input.startTime);
   const providedEndMinutes = timeToMinutes(input.endTime);
@@ -249,17 +302,14 @@ export async function createBooking(
   }
 
   const bookedSlots = await getBookedSlots(input.bookingDate, groomerId);
-  const hasConflict = bookedSlots.some((slot) =>
-    overlaps(
-      startMinutes,
-      calculatedEndMinutes,
-      timeToMinutes(slot.startTime),
-      timeToMinutes(slot.endTime)
-    )
+  const overlappingCount = countOverlappingSlots(
+    bookedSlots,
+    startMinutes,
+    calculatedEndMinutes
   );
 
-  if (hasConflict) {
-    throw new ConflictError('Selected time slot is already booked for this groomer');
+  if (overlappingCount >= slotSettings.slotBookingLimit) {
+    throw new ConflictError('Selected time slot is fully booked for this groomer');
   }
 
   const tenant = tenantFrom(input, userTenant);
@@ -274,7 +324,7 @@ export async function createBooking(
     bookingDate: input.bookingDate,
     startTime: input.startTime,
     endTime,
-    status: 'confirmed',
+    status: 'pending',
     totalDurationMinutes: quote.totalDurationMinutes,
     totalPrice: quote.totalPrice,
     clientId: tenant.clientId,
@@ -306,8 +356,9 @@ function isBookingInPast(bookingDate: string, endTime: string): boolean {
   return bookingDate < date || (bookingDate === date && endTime < time);
 }
 
-function formatBooking(booking: Booking) {
+export function formatBooking(booking: Booking): Record<string, unknown> {
   const pet = booking.get('pet') as Pet | undefined;
+  const user = booking.get('user') as User | undefined;
   const service = getServices().find((item) => item.id === booking.serviceId);
   const pkg = booking.packageId ? getPackages().find((item) => item.id === booking.packageId) : null;
   const addOns = (booking.addOnIds || [])
@@ -330,6 +381,14 @@ function formatBooking(booking: Booking) {
           petName: pet.petName,
           breed: pet.breed,
           profilePicture: pet.profilePicture,
+        }
+      : null,
+    user: user
+      ? {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
         }
       : null,
     serviceId: booking.serviceId,
@@ -381,6 +440,9 @@ export async function cancelBooking(userId: number, bookingId: number): Promise<
   if (booking.status === 'cancelled') {
     throw new ConflictError('Booking is already cancelled');
   }
+  if (booking.status === 'cancellation_requested') {
+    throw new ConflictError('Cancellation is already pending groomer approval');
+  }
   if (booking.status === 'completed') {
     throw new AppError('Completed bookings cannot be cancelled', 400);
   }
@@ -388,8 +450,29 @@ export async function cancelBooking(userId: number, bookingId: number): Promise<
     throw new AppError('Past bookings cannot be cancelled', 400);
   }
 
-  await booking.update({ status: 'cancelled' });
-  return formatBooking(booking);
+  if (booking.status === 'pending') {
+    await booking.update({ status: 'cancelled' });
+    return formatBooking(booking);
+  }
+
+  if (booking.status === 'confirmed') {
+    const thresholdHours = await getStoreCancellationThreshold(
+      booking.clientId,
+      booking.regionId,
+      booking.storeId
+    );
+    const hoursLeft = hoursUntilBooking(booking.bookingDate, booking.startTime);
+    if (hoursLeft < thresholdHours) {
+      throw new AppError(
+        `Confirmed bookings can only be cancelled at least ${thresholdHours} hour(s) before the appointment`,
+        400
+      );
+    }
+    await booking.update({ status: 'cancellation_requested' });
+    return formatBooking(booking);
+  }
+
+  throw new AppError('This booking cannot be cancelled', 400);
 }
 
 export async function getUpcomingBookings(userId: number): Promise<Record<string, unknown>[]> {
@@ -397,7 +480,7 @@ export async function getUpcomingBookings(userId: number): Promise<Record<string
   return listUserBookings(
     userId,
     {
-      status: 'confirmed',
+      status: { [Op.in]: ['pending', 'confirmed', 'cancellation_requested'] },
       [Op.or]: [{ bookingDate: { [Op.gt]: date } }, { bookingDate: date, startTime: { [Op.gte]: time } }],
     },
     [
@@ -412,11 +495,12 @@ export async function getPastBookings(userId: number): Promise<Record<string, un
   return listUserBookings(
     userId,
     {
-      status: { [Op.in]: ['confirmed', 'completed'] },
       [Op.or]: [
         { status: 'completed' },
-        { bookingDate: { [Op.lt]: date } },
-        { bookingDate: date, endTime: { [Op.lt]: time } },
+        {
+          status: { [Op.in]: ['pending', 'confirmed', 'cancellation_requested'] },
+          [Op.or]: [{ bookingDate: { [Op.lt]: date } }, { bookingDate: date, endTime: { [Op.lt]: time } }],
+        },
       ],
     },
     [
@@ -431,4 +515,58 @@ export async function getCancelledBookings(userId: number): Promise<Record<strin
     ['bookingDate', 'DESC'],
     ['startTime', 'DESC'],
   ]);
+}
+
+export async function listGroomerBookingsForAdmin(groomerId: number): Promise<Record<string, unknown>> {
+  const groomer = await Groomer.findByPk(groomerId);
+  if (!groomer) {
+    throw new NotFoundError('Groomer not found');
+  }
+
+  const { date, time } = nowParts();
+  const bookings = await Booking.findAll({
+    where: { groomerId },
+    include: [
+      { model: Pet, as: 'pet' },
+      { model: User, as: 'user' },
+    ],
+    order: [
+      ['bookingDate', 'DESC'],
+      ['startTime', 'DESC'],
+    ],
+  });
+
+  const formatted = bookings.map((booking) => formatBooking(booking));
+  const pending = formatted.filter((item) => item.status === 'pending');
+  const cancellationRequests = formatted.filter((item) => item.status === 'cancellation_requested');
+  const upcoming = formatted.filter(
+    (item) =>
+      ['pending', 'confirmed', 'cancellation_requested'].includes(String(item.status)) &&
+      (String(item.bookingDate) > date ||
+        (String(item.bookingDate) === date && String(item.startTime) >= time))
+  );
+  const past = formatted.filter(
+    (item) =>
+      item.status === 'completed' ||
+      (['pending', 'confirmed', 'cancellation_requested'].includes(String(item.status)) &&
+        (String(item.bookingDate) < date ||
+          (String(item.bookingDate) === date && String(item.endTime) < time)))
+  );
+  const cancelled = formatted.filter((item) => item.status === 'cancelled');
+
+  return {
+    groomer: {
+      id: groomer.id,
+      groomerCode: groomer.groomerCode,
+      firstName: groomer.firstName,
+      lastName: groomer.lastName,
+      multiBookingEnabled: groomer.multiBookingEnabled,
+      slotBookingLimit: groomer.slotBookingLimit,
+    },
+    pending,
+    cancellationRequests,
+    upcoming,
+    past,
+    cancelled,
+  };
 }

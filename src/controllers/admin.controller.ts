@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as adminService from '../services/admin.service';
+import * as bookingService from '../services/booking.service';
 import { sendSuccess } from '../utils/response';
 import { validateBody } from '../utils/validation';
 import {
@@ -333,6 +334,15 @@ export async function deleteUnavailability(req: Request, res: Response, next: Ne
   try {
     await adminService.deleteUnavailability(idParam(req));
     sendSuccess(res, 'Groomer unavailability deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getGroomerBookings(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = await bookingService.listGroomerBookingsForAdmin(Number(req.params.groomerId));
+    sendSuccess(res, 'Groomer bookings retrieved successfully', data);
   } catch (error) {
     next(error);
   }
