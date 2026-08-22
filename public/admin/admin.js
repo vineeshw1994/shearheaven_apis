@@ -333,18 +333,19 @@ async function openModalAsync(id) {
         const selected = Array.isArray(row?.serviceIds) ? row.serviceIds.map(Number) : [];
         const options = catalogServices
           .map(
-            (service) => `<label class="service-option">
-              <input type="checkbox" name="serviceIds" value="${service.id}" ${selected.includes(Number(service.id)) ? 'checked' : ''} />
-              <span>${service.id} - ${service.name}</span>
-            </label>`
+            (service) =>
+              `<option value="${service.id}" ${selected.includes(Number(service.id)) ? 'selected' : ''}>${service.id} - ${service.name}</option>`
           )
           .join('');
-        return `<fieldset class="service-fieldset">
-          <legend>${field.label}</legend>
-          <p class="service-help">Leave all unchecked to apply discount to every service.</p>
-          <div class="service-options">${options || '<p>No services loaded.</p>'}</div>
-        </fieldset>`;
+        return `<label class="field-full">
+          ${field.label}
+          <select name="serviceIds" class="service-select" multiple size="7">
+            ${options || '<option disabled>No services loaded</option>'}
+          </select>
+          <span class="field-help">Select one or more services. Leave empty to apply discount to all services.</span>
+        </label>`;
       }
+      const fullWidth = field.name === 'description' || field.type === 'services';
       const inputType = field.type === 'date'
         ? 'date'
         : field.type === 'time'
@@ -354,7 +355,7 @@ async function openModalAsync(id) {
             : field.type === 'password'
               ? 'password'
               : 'text';
-      return `<label>${field.label}<input type="${inputType}" name="${field.name}" value="${value || ''}" ${field.required ? 'required' : ''} /></label>`;
+      return `<label class="${fullWidth ? 'field-full' : ''}">${field.label}<input type="${inputType}" name="${field.name}" value="${value || ''}" ${field.required ? 'required' : ''} /></label>`;
     })
     .join('');
   modalEl.classList.remove('hidden');
@@ -369,9 +370,10 @@ function readForm() {
   const data = {};
   resources[currentKey].fields.forEach((field) => {
     if (field.type === 'services') {
-      data.serviceIds = Array.from(formEl.querySelectorAll('input[name="serviceIds"]:checked')).map((el) =>
-        Number(el.value)
-      );
+      const select = formEl.elements.serviceIds;
+      data.serviceIds = select
+        ? Array.from(select.selectedOptions).map((el) => Number(el.value))
+        : [];
       return;
     }
     const input = formEl.elements[field.name];
