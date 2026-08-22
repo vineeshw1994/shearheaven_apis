@@ -327,6 +327,24 @@ export async function rejectBooking(groomerId: number, bookingId: number): Promi
   return formatBooking(booking);
 }
 
+export async function completeBooking(groomerId: number, bookingId: number): Promise<Record<string, unknown>> {
+  const booking = await findGroomerBooking(groomerId, bookingId);
+  if (!['pending', 'confirmed'].includes(booking.status)) {
+    throw new AppError('Only pending or confirmed bookings can be completed', 400);
+  }
+
+  const { date, time } = nowParts();
+  if (
+    String(booking.bookingDate) > date ||
+    (String(booking.bookingDate) === date && String(booking.endTime) > time)
+  ) {
+    throw new AppError('Booking can only be completed after the appointment end time', 400);
+  }
+
+  await booking.update({ status: 'completed' });
+  return formatBooking(booking);
+}
+
 export async function approveCancellation(groomerId: number, bookingId: number): Promise<Record<string, unknown>> {
   const booking = await findGroomerBooking(groomerId, bookingId);
   if (booking.status !== 'cancellation_requested') {

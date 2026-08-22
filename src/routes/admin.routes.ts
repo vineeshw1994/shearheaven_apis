@@ -56,11 +56,14 @@ router.delete('/groomer-unavailability/:id', adminController.deleteUnavailabilit
 router.get('/groomer-bookings/:groomerId', adminController.getGroomerBookings);
 router.post('/groomer-bookings/:bookingId/approve', adminController.approveGroomerBooking);
 router.post('/groomer-bookings/:bookingId/reject', adminController.rejectGroomerBooking);
+router.post('/groomer-bookings/:bookingId/complete', adminController.completeGroomerBooking);
 
 router.get('/discounts', adminController.listDiscountsAdmin);
 router.post('/discounts', adminController.createDiscount);
 router.put('/discounts/:id', adminController.updateDiscount);
 router.delete('/discounts/:id', adminController.deleteDiscount);
+
+router.get('/catalog/services', adminController.listCatalogServices);
 
 router.get('/offers', adminController.listOffersAdmin);
 router.post('/offers', adminController.createOffer);

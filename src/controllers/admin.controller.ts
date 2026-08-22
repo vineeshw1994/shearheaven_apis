@@ -5,6 +5,7 @@ import * as groomerAuthService from '../services/groomer-auth.service';
 import * as discountService from '../services/discount.service';
 import * as offerService from '../services/offer.service';
 import * as contentService from '../services/content.service';
+import { getServices } from '../services/catalog.service';
 import { NotFoundError, sendSuccess } from '../utils/response';
 import { validateBody } from '../utils/validation';
 import {
@@ -382,6 +383,21 @@ export async function rejectGroomerBooking(req: Request, res: Response, next: Ne
   }
 }
 
+export async function completeGroomerBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookingId = Number(req.params.bookingId);
+    const { Booking } = await import('../models');
+    const booking = await Booking.findByPk(bookingId);
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+    const result = await groomerAuthService.completeBooking(booking.groomerId, bookingId);
+    sendSuccess(res, 'Booking completed successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function listDiscountsAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const rows = await discountService.listAllDiscounts(req.query);
@@ -476,6 +492,14 @@ export async function deleteStoreContent(req: Request, res: Response, next: Next
   try {
     await contentService.deleteStoreContent(idParam(req));
     sendSuccess(res, 'Store content deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listCatalogServices(_req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    sendSuccess(res, 'Catalog services fetched successfully', getServices());
   } catch (error) {
     next(error);
   }

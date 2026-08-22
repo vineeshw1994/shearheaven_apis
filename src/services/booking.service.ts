@@ -617,15 +617,19 @@ export async function getCancelledBookings(userId: number): Promise<Record<strin
   ]);
 }
 
-export async function listGroomerBookingsForAdmin(groomerId: number): Promise<Record<string, unknown>> {
-  const groomer = await Groomer.findByPk(groomerId);
+export async function listGroomerBookingsForAdmin(groomerDbId: number): Promise<Record<string, unknown>> {
+  const groomer = await Groomer.findByPk(groomerDbId);
   if (!groomer) {
     throw new NotFoundError('Groomer not found');
   }
 
+  const catalogGroomer = getCatalogGroomers().find((item) => item.code === groomer.groomerCode);
+  const bookingGroomerId = catalogGroomer?.id ?? groomerDbId;
+  const groomerDisplayName = `${groomer.groomerCode} - ${groomer.firstName} ${groomer.lastName}`.trim();
+
   const { date, time } = nowParts();
   const bookings = await Booking.findAll({
-    where: { groomerId },
+    where: { groomerId: bookingGroomerId },
     include: [
       { model: Pet, as: 'pet' },
       { model: User, as: 'user' },
@@ -636,7 +640,11 @@ export async function listGroomerBookingsForAdmin(groomerId: number): Promise<Re
     ],
   });
 
-  const formatted = bookings.map((booking) => formatBooking(booking));
+  const formatted: Record<string, unknown>[] = bookings.map((booking) => ({
+    ...formatBooking(booking),
+    groomerName: groomerDisplayName,
+    groomerCode: groomer.groomerCode,
+  }));
   const pending = formatted.filter((item) => item.status === 'pending');
   const cancellationRequests = formatted.filter((item) => item.status === 'cancellation_requested');
   const upcoming = formatted.filter(
