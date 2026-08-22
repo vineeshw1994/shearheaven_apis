@@ -21,6 +21,10 @@ const tenantSchema = {
   storeId: Joi.string().max(50).allow('').optional(),
 };
 
+const deviceIdSchema = Joi.string().trim().uuid().required().messages({
+  'string.guid': 'deviceId must be a valid UUID',
+});
+
 export const signupSchema = Joi.object({
   name: Joi.string().trim().min(2).max(100).required(),
   email: Joi.string().trim().email().required(),
@@ -29,12 +33,23 @@ export const signupSchema = Joi.object({
   confirmPassword: Joi.string().valid(Joi.ref('password')).required().messages({
     'any.only': 'Password and confirm password must match',
   }),
+  deviceId: deviceIdSchema,
   ...tenantSchema,
 });
 
 export const loginSchema = Joi.object({
   email: Joi.string().trim().email().required(),
   password: Joi.string().required(),
+  deviceId: Joi.string().trim().uuid().optional(),
+});
+
+export const validateDeviceSchema = Joi.object({
+  deviceId: deviceIdSchema,
+  userType: Joi.string()
+    .valid('guest', 'registered', 'admin', 'groomer', 'bather')
+    .required(),
+  userId: Joi.number().integer().positive().optional(),
+  ...tenantSchema,
 });
 
 export const refreshTokenSchema = Joi.object({

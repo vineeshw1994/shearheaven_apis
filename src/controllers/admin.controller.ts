@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import * as adminService from '../services/admin.service';
 import * as bookingService from '../services/booking.service';
-import { sendSuccess } from '../utils/response';
+import * as groomerAuthService from '../services/groomer-auth.service';
+import * as discountService from '../services/discount.service';
+import * as offerService from '../services/offer.service';
+import * as contentService from '../services/content.service';
+import { NotFoundError, sendSuccess } from '../utils/response';
 import { validateBody } from '../utils/validation';
 import {
   groomerCreateSchema,
@@ -343,6 +347,135 @@ export async function getGroomerBookings(req: Request, res: Response, next: Next
   try {
     const data = await bookingService.listGroomerBookingsForAdmin(Number(req.params.groomerId));
     sendSuccess(res, 'Groomer bookings retrieved successfully', data);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function approveGroomerBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookingId = Number(req.params.bookingId);
+    const { Booking } = await import('../models');
+    const booking = await Booking.findByPk(bookingId);
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+    const result = await groomerAuthService.approveBooking(booking.groomerId, bookingId);
+    sendSuccess(res, 'Booking approved successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function rejectGroomerBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookingId = Number(req.params.bookingId);
+    const { Booking } = await import('../models');
+    const booking = await Booking.findByPk(bookingId);
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+    const result = await groomerAuthService.rejectBooking(booking.groomerId, bookingId);
+    sendSuccess(res, 'Booking rejected successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listDiscountsAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rows = await discountService.listAllDiscounts(req.query);
+    sendSuccess(res, 'Discounts retrieved successfully', rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createDiscount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const row = await discountService.createDiscount(req.body);
+    sendSuccess(res, 'Discount created successfully', row, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateDiscount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const row = await discountService.updateDiscount(idParam(req), req.body);
+    sendSuccess(res, 'Discount updated successfully', row);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteDiscount(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await discountService.deleteDiscount(idParam(req));
+    sendSuccess(res, 'Discount deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listOffersAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rows = await offerService.listAllOffers(req.query);
+    sendSuccess(res, 'Offers retrieved successfully', rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createOffer(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const row = await offerService.createOffer(req.body);
+    sendSuccess(res, 'Offer created successfully', row, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateOffer(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const row = await offerService.updateOffer(idParam(req), req.body);
+    sendSuccess(res, 'Offer updated successfully', row);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteOffer(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await offerService.deleteOffer(idParam(req));
+    sendSuccess(res, 'Offer deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listStoreContentAdmin(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rows = await contentService.listStoreContent(req.query as Record<string, string>);
+    sendSuccess(res, 'Store content retrieved successfully', rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function upsertStoreContent(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const row = await contentService.upsertStoreContent(req.body);
+    sendSuccess(res, 'Store content saved successfully', row, 201);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteStoreContent(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    await contentService.deleteStoreContent(idParam(req));
+    sendSuccess(res, 'Store content deleted successfully');
   } catch (error) {
     next(error);
   }

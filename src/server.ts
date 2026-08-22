@@ -1,3 +1,4 @@
+import { createServer } from 'http';
 import { createApp } from './app';
 import { testDatabaseConnection } from './config/database';
 import { verifyMailConnection } from './config/mailer';
@@ -5,6 +6,7 @@ import { validateEnv, env } from './config/env';
 import { logger } from './utils/logger';
 import { ensureModels } from './models';
 import { alignScheduleSchema, seedScheduleData } from './services/schedule.seed';
+import { initSocketServer } from './config/socket';
 
 async function startServer(): Promise<void> {
   try {
@@ -23,11 +25,14 @@ async function startServer(): Promise<void> {
     }
 
     const app = createApp();
+    const httpServer = createServer(app);
+    initSocketServer(httpServer);
 
-    app.listen(env.port, () => {
+    httpServer.listen(env.port, () => {
       logger.info(`Server running on port ${env.port} in ${env.nodeEnv} mode`);
       logger.info(`Swagger docs available at http://localhost:${env.port}/api-docs`);
       logger.info(`Admin panel available at http://localhost:${env.port}/admin`);
+      logger.info(`Socket.IO available at http://localhost:${env.port}/socket.io`);
     });
   } catch (error) {
     logger.error('Failed to start server', {

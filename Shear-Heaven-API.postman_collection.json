@@ -14,6 +14,8 @@
     { "key": "groomerId", "value": "1", "type": "string" },
     { "key": "groomerCode", "value": "G001", "type": "string" },
     { "key": "groomerAccessToken", "value": "", "type": "string" },
+    { "key": "groomerRefreshToken", "value": "", "type": "string" },
+    { "key": "deviceId", "value": "550e8400-e29b-41d4-a716-446655440000", "type": "string" },
     { "key": "scheduleRecordId", "value": "1", "type": "string" }
   ],
   "auth": {
@@ -65,7 +67,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"mobile\": \"9876543210\",\n  \"password\": \"Password@123\",\n  \"confirmPassword\": \"Password@123\",\n  \"clientId\": \"\",\n  \"regionId\": \"\",\n  \"storeId\": \"\"\n}"
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"mobile\": \"9876543210\",\n  \"password\": \"Password@123\",\n  \"confirmPassword\": \"Password@123\",\n  \"deviceId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"clientId\": \"\",\n  \"regionId\": \"\",\n  \"storeId\": \"\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/signup",
@@ -102,7 +104,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\"\n}"
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"Password@123\",\n  \"deviceId\": \"550e8400-e29b-41d4-a716-446655440000\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/auth/login",
@@ -797,6 +799,73 @@
             },
             "description": "Reject a cancellation request → booking returns to `confirmed`."
           }
+        },
+        {
+          "name": "Setup Account (One Time)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) pm.collectionVariables.set('groomerAccessToken', json.data.accessToken);",
+                  "if (json.data && json.data.refreshToken) pm.collectionVariables.set('groomerRefreshToken', json.data.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tempLoginId\": \"g0011234567890@temp.shearheaven.com\",\n  \"tempPassword\": \"Tmp@abc129\",\n  \"email\": \"g001@shearheaven.com\",\n  \"password\": \"Groomer@123\",\n  \"confirmPassword\": \"Groomer@123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/setup-account",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "setup-account"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Groomer Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{groomerRefreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/refresh-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "refresh-token"]
+            }
+          }
+        },
+        {
+          "name": "Create Booking For User",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": 1,\n  \"petId\": {{petId}},\n  \"serviceId\": 12,\n  \"packageId\": 1,\n  \"addOnIds\": [2],\n  \"bookingDate\": \"2026-08-25\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/create-for-user",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "create-for-user"]
+            },
+            "description": "Groomer creates a confirmed booking on behalf of a user."
+          }
         }
       ]
     },
@@ -1390,6 +1459,54 @@
             }
           ]
         }
+      ]
+    },
+    {
+      "name": "Device Auth",
+      "item": [
+        {
+          "name": "Validate Device",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"userType\": \"guest\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/validate-device",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "validate-device"]
+            },
+            "description": "Validate device and get device access token. userType: guest | registered | admin | groomer | bather. Optional userId for registered users."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        { "name": "List Notifications", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] } } },
+        { "name": "Mark Read", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications/1/read", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "1", "read"] } } },
+        { "name": "Mark All Read", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "read-all"] } } },
+        { "name": "Delete Notification", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications/1", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "1"] } } },
+        { "name": "Register Device Token", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"pushToken\": \"fcm-token-here\",\n  \"platform\": \"android\"\n}" }, "url": { "raw": "{{baseUrl}}/api/notifications/device-token", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "device-token"] } } }
+      ]
+    },
+    {
+      "name": "Offers & Chat & CMS",
+      "item": [
+        { "name": "List Offers", "request": { "auth": { "type": "noauth" }, "method": "GET", "url": { "raw": "{{baseUrl}}/api/offers?clientId=SHEAR-001&regionId=DWG-001&storeId=SHEAR-001", "host": ["{{baseUrl}}"], "path": ["api", "offers"] } } },
+        { "name": "Validate Promo", "request": { "auth": { "type": "noauth" }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"promoCode\": \"SAVE10\",\n  \"orderAmount\": 100,\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}" }, "url": { "raw": "{{baseUrl}}/api/offers/validate-promo", "host": ["{{baseUrl}}"], "path": ["api", "offers", "validate-promo"] } } },
+        { "name": "Chat History", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/chat/history", "host": ["{{baseUrl}}"], "path": ["api", "chat", "history"] } } },
+        { "name": "Send Chat", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"message\": \"Hello, I need help with booking\"\n}" }, "url": { "raw": "{{baseUrl}}/api/chat/send", "host": ["{{baseUrl}}"], "path": ["api", "chat", "send"] } } },
+        { "name": "Chat Assistant", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"message\": \"What are your store hours?\"\n}" }, "url": { "raw": "{{baseUrl}}/api/chat/assistant", "host": ["{{baseUrl}}"], "path": ["api", "chat", "assistant"] } } },
+        { "name": "Store Contact Info", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/store/contact-info", "host": ["{{baseUrl}}"], "path": ["api", "store", "contact-info"] } } },
+        { "name": "About Us", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/content/about-us", "host": ["{{baseUrl}}"], "path": ["api", "content", "about-us"] } } },
+        { "name": "Help Support", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/content/help-support", "host": ["{{baseUrl}}"], "path": ["api", "content", "help-support"] } } },
+        { "name": "Privacy Policy", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/content/privacy-policy", "host": ["{{baseUrl}}"], "path": ["api", "content", "privacy-policy"] } } },
+        { "name": "Terms Conditions", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/content/terms-conditions", "host": ["{{baseUrl}}"], "path": ["api", "content", "terms-conditions"] } } }
       ]
     }
   ]

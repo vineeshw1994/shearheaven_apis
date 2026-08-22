@@ -17,6 +17,42 @@ export interface GroomerAccessTokenPayload {
   role: 'groomer';
 }
 
+export interface GroomerRefreshTokenPayload {
+  groomerId: number;
+  tokenId: number;
+}
+
+export interface DeviceAccessTokenPayload {
+  deviceId: string;
+  userType: 'guest' | 'registered' | 'admin' | 'groomer' | 'bather';
+  userId?: number;
+  tokenType: 'device';
+}
+
+export function generateDeviceAccessToken(payload: Omit<DeviceAccessTokenPayload, 'tokenType'>): string {
+  return jwt.sign({ ...payload, tokenType: 'device' }, env.jwt.accessSecret, {
+    expiresIn: env.jwt.accessExpiresIn,
+  } as jwt.SignOptions);
+}
+
+export function verifyDeviceAccessToken(token: string): DeviceAccessTokenPayload {
+  const payload = jwt.verify(token, env.jwt.accessSecret) as DeviceAccessTokenPayload;
+  if (payload.tokenType !== 'device') {
+    throw new Error('Invalid device token');
+  }
+  return payload;
+}
+
+export function generateGroomerRefreshToken(payload: GroomerRefreshTokenPayload): string {
+  return jwt.sign(payload, env.jwt.refreshSecret, {
+    expiresIn: env.jwt.refreshExpiresIn,
+  } as jwt.SignOptions);
+}
+
+export function verifyGroomerRefreshToken(token: string): GroomerRefreshTokenPayload {
+  return jwt.verify(token, env.jwt.refreshSecret) as GroomerRefreshTokenPayload;
+}
+
 export function generateGroomerAccessToken(payload: GroomerAccessTokenPayload): string {
   return jwt.sign(payload, env.jwt.accessSecret, {
     expiresIn: env.jwt.accessExpiresIn,

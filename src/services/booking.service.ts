@@ -340,6 +340,105 @@ export async function createBooking(
   };
 }
 
+export interface GroomerCreateBookingInput extends CreateBookingInput {
+  userId: number;
+}
+
+export async function createBookingByGroomer(
+  groomerCatalogId: number,
+  input: GroomerCreateBookingInput,
+  groomerTenant: { clientId: string; regionId: string; storeId: string }
+): Promise<{
+  bookingId: number;
+  status: string;
+  totalDurationMinutes: number;
+  totalPrice: number;
+}> {
+  const user = await User.findByPk(input.userId);
+  if (!user) {
+    throw new NotFoundError('User not found');
+  }
+
+  const pet = await Pet.findByPk(input.petId);
+  if (!pet) {
+    throw new NotFoundError('Pet not found');
+  }
+  if (pet.userId !== input.userId) {
+    throw new ForbiddenError('Pet does not belong to the selected user');
+  }
+
+  const bookingInput: CreateBookingInput = {
+    ...input,
+    groomerId: groomerCatalogId,
+  };
+
+  const workingHours = assertStoreIsOpen(bookingInput.bookingDate);
+  const quote = calculateQuote(bookingInput.serviceId, bookingInput.packageId, bookingInput.addOnIds || []);
+  const groomerId = groomerCatalogId;
+  getGroomerById(groomerId);
+  const slotSettings = await getGroomerSlotSettings(groomerId);
+
+  const startMinutes = timeToMinutes(bookingInput.startTime);
+  const providedEndMinutes = timeToMinutes(bookingInput.endTime);
+  const calculatedEndMinutes = startMinutes + quote.totalDurationMinutes;
+  const endTime = minutesToTime(calculatedEndMinutes);
+
+  if (providedEndMinutes !== calculatedEndMinutes) {
+    throw new AppError(
+      `endTime must be ${endTime} based on the selected service duration of ${quote.totalDurationMinutes} minutes`,
+      400
+    );
+  }
+
+  const openMinutes = timeToMinutes(workingHours.open);
+  const closeMinutes = timeToMinutes(workingHours.close);
+
+  if (startMinutes < openMinutes || calculatedEndMinutes > closeMinutes) {
+    throw new AppError(
+      `Selected time is outside groomer working hours (${workingHours.open} - ${workingHours.close})`,
+      400
+    );
+  }
+
+  const bookedSlots = await getBookedSlots(bookingInput.bookingDate, groomerId);
+  const overlappingCount = countOverlappingSlots(
+    bookedSlots,
+    startMinutes,
+    calculatedEndMinutes
+  );
+
+  if (overlappingCount >= slotSettings.slotBookingLimit) {
+    throw new ConflictError('Selected time slot is fully booked for this groomer');
+  }
+
+  const tenant = tenantFrom(bookingInput, groomerTenant);
+
+  const booking = await Booking.create({
+    userId: input.userId,
+    petId: bookingInput.petId,
+    serviceId: bookingInput.serviceId,
+    packageId: bookingInput.packageId || null,
+    addOnIds: bookingInput.addOnIds || [],
+    groomerId,
+    bookingDate: bookingInput.bookingDate,
+    startTime: bookingInput.startTime,
+    endTime,
+    status: 'confirmed',
+    totalDurationMinutes: quote.totalDurationMinutes,
+    totalPrice: quote.totalPrice,
+    clientId: tenant.clientId,
+    regionId: tenant.regionId,
+    storeId: tenant.storeId,
+  });
+
+  return {
+    bookingId: booking.id,
+    status: booking.status,
+    totalDurationMinutes: booking.totalDurationMinutes,
+    totalPrice: Number(booking.totalPrice),
+  };
+}
+
 function nowParts() {
   const now = new Date();
   const date = [

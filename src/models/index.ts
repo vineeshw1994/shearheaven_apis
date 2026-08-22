@@ -8,10 +8,18 @@ import ClientMaster from './ClientMaster';
 import RegionMaster from './RegionMaster';
 import StoreMaster from './StoreMaster';
 import Groomer from './Groomer';
+import GroomerRefreshToken from './GroomerRefreshToken';
 import Holiday from './Holiday';
 import StoreOperationalHour from './StoreOperationalHour';
 import GroomerWorkingHour from './GroomerWorkingHour';
 import GroomerUnavailability from './GroomerUnavailability';
+import LoginDevice from './LoginDevice';
+import Discount from './Discount';
+import Notification from './Notification';
+import NotificationDeviceToken from './NotificationDeviceToken';
+import Offer from './Offer';
+import ChatMessage from './ChatMessage';
+import StoreContent from './StoreContent';
 
 User.hasMany(Pet, { foreignKey: 'userId', as: 'pets' });
 Pet.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -22,6 +30,18 @@ RefreshToken.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasMany(Booking, { foreignKey: 'userId', as: 'bookings' });
 Booking.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+User.hasMany(LoginDevice, { foreignKey: 'userId', as: 'loginDevices' });
+LoginDevice.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications' });
+Notification.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Groomer.hasMany(GroomerRefreshToken, { foreignKey: 'groomerId', as: 'refreshTokens' });
+GroomerRefreshToken.belongsTo(Groomer, { foreignKey: 'groomerId', as: 'groomer' });
+
+Groomer.hasMany(Notification, { foreignKey: 'groomerId', as: 'notifications' });
+Notification.belongsTo(Groomer, { foreignKey: 'groomerId', as: 'groomer' });
+
 Pet.hasMany(Booking, { foreignKey: 'petId', as: 'bookings' });
 Booking.belongsTo(Pet, { foreignKey: 'petId', as: 'pet' });
 
@@ -30,6 +50,31 @@ RegionMaster.belongsTo(ClientMaster, { foreignKey: 'clientId', targetKey: 'clien
 
 ClientMaster.hasMany(StoreMaster, { foreignKey: 'clientId', sourceKey: 'clientId', as: 'stores' });
 StoreMaster.belongsTo(ClientMaster, { foreignKey: 'clientId', targetKey: 'clientId', as: 'client' });
+
+const platformModels = [
+  User,
+  Pet,
+  Otp,
+  RefreshToken,
+  PendingSignup,
+  Booking,
+  ClientMaster,
+  RegionMaster,
+  StoreMaster,
+  Groomer,
+  GroomerRefreshToken,
+  Holiday,
+  StoreOperationalHour,
+  GroomerWorkingHour,
+  GroomerUnavailability,
+  LoginDevice,
+  Discount,
+  Notification,
+  NotificationDeviceToken,
+  Offer,
+  ChatMessage,
+  StoreContent,
+];
 
 export {
   User,
@@ -42,45 +87,30 @@ export {
   RegionMaster,
   StoreMaster,
   Groomer,
+  GroomerRefreshToken,
   Holiday,
   StoreOperationalHour,
   GroomerWorkingHour,
   GroomerUnavailability,
+  LoginDevice,
+  Discount,
+  Notification,
+  NotificationDeviceToken,
+  Offer,
+  ChatMessage,
+  StoreContent,
 };
 
 export async function syncModels(force = false): Promise<void> {
-  await User.sync({ force });
-  await Pet.sync({ force });
-  await Otp.sync({ force });
-  await RefreshToken.sync({ force });
-  await PendingSignup.sync({ force });
-  await Booking.sync({ force });
-  await ClientMaster.sync({ force });
-  await RegionMaster.sync({ force });
-  await StoreMaster.sync({ force });
-  await Groomer.sync({ force });
-  await Holiday.sync({ force });
-  await StoreOperationalHour.sync({ force });
-  await GroomerWorkingHour.sync({ force });
-  await GroomerUnavailability.sync({ force });
+  for (const model of platformModels) {
+    await model.sync({ force });
+  }
 }
 
-/** Creates any missing tables without dropping existing data. */
 export async function ensureModels(): Promise<void> {
-  await User.sync();
-  await Pet.sync();
-  await Otp.sync();
-  await RefreshToken.sync();
-  await PendingSignup.sync();
-  await Booking.sync();
-  await ClientMaster.sync();
-  await RegionMaster.sync();
-  await StoreMaster.sync();
-  await Groomer.sync();
-  await Holiday.sync();
-  await StoreOperationalHour.sync();
-  await GroomerWorkingHour.sync();
-  await GroomerUnavailability.sync();
+  for (const model of platformModels) {
+    await model.sync();
+  }
 }
 
 export default {
@@ -94,9 +124,17 @@ export default {
   RegionMaster,
   StoreMaster,
   Groomer,
+  GroomerRefreshToken,
   Holiday,
   StoreOperationalHour,
   GroomerWorkingHour,
   GroomerUnavailability,
+  LoginDevice,
+  Discount,
+  Notification,
+  NotificationDeviceToken,
+  Offer,
+  ChatMessage,
+  StoreContent,
   syncModels,
 };

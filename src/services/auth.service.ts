@@ -15,6 +15,7 @@ import {
   getOtpExpiryDate,
 } from '../utils/jwt';
 import { sendOtpEmail } from './email.service';
+import * as deviceAuthService from './device-auth.service';
 import {
   ConflictError,
   UnauthorizedError,
@@ -30,6 +31,7 @@ interface SignupInput {
   email: string;
   mobile: string;
   password: string;
+  deviceId: string;
   clientId?: string;
   regionId?: string;
   storeId?: string;
@@ -97,6 +99,7 @@ export async function signupUser(input: SignupInput): Promise<{ message: string;
     clientId: input.clientId || '',
     regionId: input.regionId || '',
     storeId: input.storeId || '',
+    deviceId: input.deviceId,
   });
 
   await sendOtpEmail(input.email, otp, input.name);
@@ -107,7 +110,11 @@ export async function signupUser(input: SignupInput): Promise<{ message: string;
   };
 }
 
-export async function loginUser(email: string, password: string): Promise<AuthTokenResponse> {
+export async function loginUser(
+  email: string,
+  password: string,
+  deviceId?: string
+): Promise<AuthTokenResponse & { deviceAccessToken?: string }> {
   const user = await User.findOne({ where: { email } });
 
   if (!user) {
@@ -121,7 +128,14 @@ export async function loginUser(email: string, password: string): Promise<AuthTo
     throw new UnauthorizedError('Invalid email or password');
   }
 
-  return generateAuthTokens(user);
+  const tokens = await generateAuthTokens(user);
+
+  if (deviceId) {
+    const deviceTokens = await deviceAuthService.generateDeviceTokenForUser(user, deviceId, 'registered');
+    return { ...tokens, deviceAccessToken: deviceTokens.deviceAccessToken as string };
+  }
+
+  return tokens;
 }
 
 async function generateAuthTokens(user: User): Promise<AuthTokenResponse> {
@@ -233,6 +247,19 @@ async function verifySignupOtp(email: string, otp: string): Promise<AuthTokenRes
   });
 
   await pendingSignup.update({ verified: true });
+
+  if (pendingSignup.deviceId) {
+    await deviceAuthService.registerDevice(
+      pendingSignup.deviceId,
+      'registered',
+      user.id,
+      {
+        clientId: user.clientId,
+        regionId: user.regionId,
+        storeId: user.storeId,
+      }
+    );
+  }
 
   return generateAuthTokens(user);
 }

@@ -55,6 +55,7 @@ export const env = {
   },
 
   baseUrl: (process.env.BASE_URL || optionalWithDefaults.BASE_URL).replace(/\/$/, ''),
+  appName: process.env.APP_NAME || 'Shear Heaven',
 };
 
 export function validateEnv(): void {

@@ -7,6 +7,11 @@ import bookingRoutes from './booking.routes';
 import availabilityRoutes from './availability.routes';
 import scheduleRoutes from './schedule.routes';
 import adminRoutes from './admin.routes';
+import notificationRoutes from './notification.routes';
+import offerRoutes from './offer.routes';
+import chatRoutes from './chat.routes';
+import contentRoutes from './content.routes';
+import storeRoutes from './store.routes';
 
 const router = Router();
 
@@ -18,5 +23,10 @@ router.use('/bookings', bookingRoutes);
 router.use('/availability', availabilityRoutes);
 router.use('/groomer-availability', scheduleRoutes);
 router.use('/admin', adminRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/offers', offerRoutes);
+router.use('/chat', chatRoutes);
+router.use('/content', contentRoutes);
+router.use('/store', storeRoutes);
 
 export default router;

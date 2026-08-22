@@ -12,6 +12,7 @@ import {
   profileUpdateSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  validateDeviceSchema,
 } from '../utils/validation';
 
 const router = Router();
@@ -166,5 +167,6 @@ router.post('/forgot-password', validate(forgotPasswordSchema), authController.f
  *     summary: Reset password after email verification
  */
 router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
+router.post('/validate-device', validate(validateDeviceSchema), authController.validateDevice);
 
 export default router;

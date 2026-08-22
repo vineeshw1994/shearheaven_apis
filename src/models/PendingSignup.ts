@@ -44,6 +44,7 @@ class PendingSignup extends Model<
   declare clientId: CreationOptional<string>;
   declare regionId: CreationOptional<string>;
   declare storeId: CreationOptional<string>;
+  declare deviceId: CreationOptional<string>;
 }
 
 PendingSignup.init(
@@ -100,6 +101,11 @@ PendingSignup.init(
     },
     storeId: {
       type: DataTypes.STRING(50),
+      allowNull: false,
+      defaultValue: '',
+    },
+    deviceId: {
+      type: DataTypes.STRING(100),
       allowNull: false,
       defaultValue: '',
     },

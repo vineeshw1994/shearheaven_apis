@@ -43,7 +43,8 @@ const resources = {
       { name: 'groomerCode', label: 'Groomer Code', required: true },
       { name: 'firstName', label: 'First Name', required: true },
       { name: 'lastName', label: 'Last Name', required: true },
-      { name: 'email', label: 'Email' },
+      { name: 'email', label: 'Notification Email' },
+      { name: 'notificationEmail', label: 'Send Credentials To' },
       { name: 'password', label: 'Password', type: 'password' },
       { name: 'mobile', label: 'Mobile' },
       { name: 'multiBookingEnabled', label: 'Multi Booking Enabled', type: 'checkbox' },
@@ -60,6 +61,25 @@ const resources = {
   groomerBookings: {
     title: 'Groomer Bookings',
     custom: true,
+  },
+  discounts: {
+    title: 'Discounts',
+    path: '/api/admin/discounts',
+    columns: ['id', 'code', 'name', 'discountType', 'discountValue', 'isActive', 'clientId', 'regionId', 'storeId'],
+    fields: [
+      { name: 'code', label: 'Code', required: true },
+      { name: 'name', label: 'Name', required: true },
+      { name: 'description', label: 'Description' },
+      { name: 'discountType', label: 'Type', type: 'select', options: ['percentage', 'fixed'] },
+      { name: 'discountValue', label: 'Value', type: 'number' },
+      { name: 'minOrderAmount', label: 'Min Order', type: 'number' },
+      { name: 'startDate', label: 'Start Date', type: 'date' },
+      { name: 'endDate', label: 'End Date', type: 'date' },
+      { name: 'isActive', label: 'Active', type: 'checkbox' },
+      { name: 'clientId', label: 'ClientID' },
+      { name: 'regionId', label: 'RegionId' },
+      { name: 'storeId', label: 'StoreId' },
+    ],
   },
   holidays: {
     title: 'Holiday List',
@@ -124,7 +144,7 @@ const resources = {
   },
 };
 
-const tabOrder = ['clients', 'regions', 'stores', 'groomers', 'groomerBookings', 'holidays', 'storeHours', 'groomerHours', 'unavailability'];
+const tabOrder = ['clients', 'regions', 'stores', 'groomers', 'groomerBookings', 'discounts', 'holidays', 'storeHours', 'groomerHours', 'unavailability'];
 let currentKey = 'clients';
 let rows = [];
 let groomers = [];
@@ -336,7 +356,7 @@ async function loadTable() {
   }
 }
 
-function bookingSection(title, items) {
+function bookingSection(title, items, showActions = false) {
   const rowsHtml = (items || [])
     .map(
       (item) => `<tr>
@@ -347,14 +367,18 @@ function bookingSection(title, items) {
         <td>${item.pet?.petName || '-'}</td>
         <td>${item.user?.name || '-'}</td>
         <td>${item.serviceName || '-'}</td>
+        ${showActions ? `<td class="row-actions">
+          <button type="button" data-approve-booking="${item.bookingId}">Accept</button>
+          <button type="button" class="danger" data-reject-booking="${item.bookingId}">Reject</button>
+        </td>` : ''}
       </tr>`
     )
     .join('');
   return `<section class="booking-section">
     <h3>${title} (${(items || []).length})</h3>
     <table>
-      <thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Time</th><th>Pet</th><th>Customer</th><th>Service</th></tr></thead>
-      <tbody>${rowsHtml || '<tr><td colspan="7">No bookings</td></tr>'}</tbody>
+      <thead><tr><th>ID</th><th>Status</th><th>Date</th><th>Time</th><th>Pet</th><th>Customer</th><th>Service</th>${showActions ? '<th></th>' : ''}</tr></thead>
+      <tbody>${rowsHtml || `<tr><td colspan="${showActions ? 8 : 7}">No bookings</td></tr>`}</tbody>
     </table>
   </section>`;
 }
@@ -388,12 +412,27 @@ async function renderGroomerBookingsView() {
     try {
       const data = await api(`/api/admin/groomer-bookings/${groomerId}`);
       contentEl.innerHTML = [
-        bookingSection('Pending Requests', data.pending),
+        bookingSection('Pending Requests', data.pending, true),
         bookingSection('Cancellation Requests', data.cancellationRequests),
         bookingSection('Upcoming', data.upcoming),
         bookingSection('Past', data.past),
         bookingSection('Cancelled', data.cancelled),
       ].join('');
+      contentEl.querySelectorAll('[data-approve-booking]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          const bookingId = button.getAttribute('data-approve-booking');
+          await api(`/api/admin/groomer-bookings/${bookingId}/approve`, { method: 'POST' });
+          await loadSelectedGroomerBookings();
+        });
+      });
+      contentEl.querySelectorAll('[data-reject-booking]').forEach((button) => {
+        button.addEventListener('click', async () => {
+          if (!window.confirm('Reject this booking request?')) return;
+          const bookingId = button.getAttribute('data-reject-booking');
+          await api(`/api/admin/groomer-bookings/${bookingId}/reject`, { method: 'POST' });
+          await loadSelectedGroomerBookings();
+        });
+      });
       setStatus(`Loaded bookings for ${data.groomer.firstName} ${data.groomer.lastName}`);
     } catch (error) {
       contentEl.innerHTML = '';

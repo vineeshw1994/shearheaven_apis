@@ -59,3 +59,36 @@ If you did not request this code, please ignore this email.
 
 - Shear Heaven`;
 }
+
+export function buildGroomerWelcomeEmailHtml(
+  appName: string,
+  tempLoginId: string,
+  tempPassword: string,
+  recipientName?: string
+): string {
+  const greeting = recipientName ? `Hi ${recipientName},` : 'Hello,';
+  return `<!DOCTYPE html><html><body style="font-family:Arial,sans-serif;padding:24px;">
+  <h2>${appName} Groomer Account</h2>
+  <p>${greeting}</p>
+  <p>Your temporary login credentials:</p>
+  <p><strong>Login ID:</strong> ${tempLoginId}<br/><strong>Password:</strong> ${tempPassword}</p>
+  <p>Please login in the ${appName} app and complete the one-time account setup to set your permanent email and password.</p>
+  </body></html>`;
+}
+
+export function buildGroomerWelcomeEmailText(
+  appName: string,
+  tempLoginId: string,
+  tempPassword: string,
+  recipientName?: string
+): string {
+  const greeting = recipientName ? `Hi ${recipientName},` : 'Hello,';
+  return `${greeting}
+
+Welcome to ${appName}.
+
+Temporary Login ID: ${tempLoginId}
+Temporary Password: ${tempPassword}
+
+Please login and complete one-time account setup.`;
+}

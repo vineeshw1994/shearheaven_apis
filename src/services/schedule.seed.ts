@@ -122,11 +122,14 @@ async function alignBookingFlowSchema(): Promise<void> {
   await addColumnIfMissing('groomers', 'mobile', 'VARCHAR(20) NOT NULL DEFAULT ""');
   await addColumnIfMissing('groomers', 'multiBookingEnabled', 'TINYINT(1) NOT NULL DEFAULT 0');
   await addColumnIfMissing('groomers', 'slotBookingLimit', 'INT UNSIGNED NOT NULL DEFAULT 1');
+  await addColumnIfMissing('groomers', 'mustChangePassword', 'TINYINT(1) NOT NULL DEFAULT 0');
+  await addColumnIfMissing('groomers', 'tempLoginId', 'VARCHAR(255) NOT NULL DEFAULT ""');
   await addColumnIfMissing(
     'store_master',
     'cancellationThresholdHours',
     'INT UNSIGNED NOT NULL DEFAULT 3'
   );
+  await addColumnIfMissing('pending_signups', 'deviceId', 'VARCHAR(100) NOT NULL DEFAULT ""');
 
   if (await tableExists('bookings')) {
     await sequelize.query(`

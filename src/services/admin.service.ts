@@ -138,15 +138,27 @@ export async function listGroomers(query: TenantInput) {
 
 export async function createGroomer(body: TenantInput & Record<string, unknown>) {
   const payload = withTenant(body) as Record<string, unknown>;
-  if (payload.password) {
-    const { hashPassword } = await import('../utils/crypto');
-    payload.password = await hashPassword(String(payload.password));
-  }
+  const { hashPassword } = await import('../utils/crypto');
+  const groomerCode = String(payload.groomerCode || 'groomer').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const tempLoginId = `${groomerCode}${Date.now()}@temp.shearheaven.com`;
+  const tempPassword = `Tmp@${Math.random().toString(36).slice(2, 8)}9`;
+  payload.tempLoginId = tempLoginId;
+  payload.password = await hashPassword(tempPassword);
+  payload.mustChangePassword = true;
   if (payload.email) {
     payload.email = String(payload.email).trim().toLowerCase();
+  } else {
+    payload.email = '';
   }
   const row = await Groomer.create(payload as never);
-  return sanitizeGroomerRow(row);
+  const notifyEmail = String(body.notificationEmail || body.email || '').trim();
+  if (notifyEmail) {
+    const { sendGroomerWelcomeEmail } = await import('./email.service');
+    await sendGroomerWelcomeEmail(notifyEmail, String(row.firstName), tempLoginId, tempPassword);
+  }
+  const sanitized = sanitizeGroomerRow(row) as Record<string, unknown>;
+  sanitized.tempCredentialsSent = Boolean(notifyEmail);
+  return sanitized;
 }
 
 export async function updateGroomer(id: number, body: Record<string, unknown>) {

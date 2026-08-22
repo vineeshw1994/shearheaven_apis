@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import * as authService from '../services/auth.service';
 import { sendSuccess } from '../utils/response';
-import { signupSchema, loginSchema, refreshTokenSchema, sendOtpSchema, verifyOtpSchema, profileUpdateSchema, forgotPasswordSchema, resetPasswordSchema } from '../utils/validation';
+import { signupSchema, loginSchema, refreshTokenSchema, sendOtpSchema, verifyOtpSchema, profileUpdateSchema, forgotPasswordSchema, resetPasswordSchema, validateDeviceSchema } from '../utils/validation';
+import * as deviceAuthService from '../services/device-auth.service';
 import { validateBody } from '../utils/validation';
 import { AuthRequest } from '../types/express';
 
@@ -12,6 +13,7 @@ export async function signup(req: Request, res: Response, next: NextFunction): P
       email: string;
       mobile: string;
       password: string;
+      deviceId: string;
       clientId?: string;
       regionId?: string;
       storeId?: string;
@@ -26,8 +28,8 @@ export async function signup(req: Request, res: Response, next: NextFunction): P
 
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { email, password } = validateBody<{ email: string; password: string }>(loginSchema, req.body);
-    const result = await authService.loginUser(email, password);
+    const data = validateBody<{ email: string; password: string; deviceId?: string }>(loginSchema, req.body);
+    const result = await authService.loginUser(data.email, data.password, data.deviceId);
     sendSuccess(res, 'Login successful', result);
   } catch (error) {
     next(error);
@@ -118,6 +120,16 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
     );
     const result = await authService.resetUserPassword(email, password);
     sendSuccess(res, 'Password updated successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function validateDevice(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<deviceAuthService.ValidateDeviceInput>(validateDeviceSchema, req.body);
+    const result = await deviceAuthService.validateDeviceUser(data);
+    sendSuccess(res, 'Device validated successfully', result);
   } catch (error) {
     next(error);
   }

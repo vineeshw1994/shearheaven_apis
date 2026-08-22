@@ -1,7 +1,12 @@
 import { Op } from 'sequelize';
-import { Groomer, Booking, Pet, User } from '../models';
-import { comparePassword, hashPassword } from '../utils/crypto';
-import { generateGroomerAccessToken } from '../utils/jwt';
+import { Groomer, Booking, Pet, User, GroomerRefreshToken } from '../models';
+import { comparePassword, hashPassword, hashToken, compareToken } from '../utils/crypto';
+import {
+  generateGroomerAccessToken,
+  generateGroomerRefreshToken,
+  getRefreshTokenExpiryDate,
+  verifyGroomerRefreshToken,
+} from '../utils/jwt';
 import {
   AppError,
   ConflictError,
@@ -39,6 +44,7 @@ function sanitizeGroomer(groomer: Groomer): Record<string, unknown> {
     isActive: groomer.isActive,
     multiBookingEnabled: groomer.multiBookingEnabled,
     slotBookingLimit: groomer.slotBookingLimit,
+    mustChangePassword: groomer.mustChangePassword,
     clientId: groomer.clientId,
     regionId: groomer.regionId,
     storeId: groomer.storeId,
@@ -88,10 +94,37 @@ async function listGroomerBookings(
   return bookings.map((booking) => formatBooking(booking));
 }
 
+export interface GroomerSetupAccountInput {
+  tempLoginId: string;
+  tempPassword: string;
+  email: string;
+  password: string;
+}
+
+async function generateGroomerAuthTokens(groomer: Groomer): Promise<Record<string, unknown>> {
+  const refreshRecord = await GroomerRefreshToken.create({
+    groomerId: groomer.id,
+    tokenHash: '',
+    expiresAt: getRefreshTokenExpiryDate(),
+  });
+  const refreshToken = generateGroomerRefreshToken({
+    groomerId: groomer.id,
+    tokenId: refreshRecord.id,
+  });
+  await refreshRecord.update({ tokenHash: await hashToken(refreshToken) });
+  const accessToken = generateGroomerAccessToken({
+    groomerId: groomer.id,
+    email: groomer.email,
+    role: 'groomer',
+  });
+  return { accessToken, refreshToken };
+}
+
 export async function loginGroomer(input: GroomerLoginInput): Promise<Record<string, unknown>> {
+  const loginId = input.email.trim().toLowerCase();
   const groomer = await Groomer.findOne({
     where: {
-      email: input.email.trim().toLowerCase(),
+      [Op.or]: [{ email: loginId }, { tempLoginId: loginId }],
       isActive: true,
     },
   });
@@ -105,16 +138,82 @@ export async function loginGroomer(input: GroomerLoginInput): Promise<Record<str
     throw new UnauthorizedError('Invalid email or password');
   }
 
+  if (groomer.mustChangePassword) {
+    return {
+      mustChangePassword: true,
+      tempLoginId: groomer.tempLoginId || groomer.email,
+      groomer: sanitizeGroomer(groomer),
+    };
+  }
+
+  const tokens = await generateGroomerAuthTokens(groomer);
+  return {
+    ...tokens,
+    mustChangePassword: false,
+    groomer: sanitizeGroomer(groomer),
+  };
+}
+
+export async function setupGroomerAccount(input: GroomerSetupAccountInput): Promise<Record<string, unknown>> {
+  const tempLoginId = input.tempLoginId.trim().toLowerCase();
+  const groomer = await Groomer.findOne({
+    where: { tempLoginId, mustChangePassword: true, isActive: true },
+  });
+  if (!groomer) {
+    throw new NotFoundError('Groomer setup record not found');
+  }
+
+  const validTemp = await comparePassword(input.tempPassword, groomer.password);
+  if (!validTemp) {
+    throw new UnauthorizedError('Invalid temporary password');
+  }
+
+  await ensureGroomerEmailAvailable(input.email.trim().toLowerCase(), groomer.id);
+  const hashedPassword = await hashPassword(input.password);
+  await groomer.update({
+    email: input.email.trim().toLowerCase(),
+    password: hashedPassword,
+    mustChangePassword: false,
+    tempLoginId: '',
+  });
+
+  const tokens = await generateGroomerAuthTokens(groomer);
+  return {
+    ...tokens,
+    mustChangePassword: false,
+    groomer: sanitizeGroomer(groomer),
+  };
+}
+
+export async function refreshGroomerAccessToken(refreshToken: string): Promise<Record<string, unknown>> {
+  let payload;
+  try {
+    payload = verifyGroomerRefreshToken(refreshToken);
+  } catch {
+    throw new UnauthorizedError('Invalid or expired refresh token');
+  }
+
+  const tokenRecord = await GroomerRefreshToken.findByPk(payload.tokenId);
+  if (!tokenRecord || tokenRecord.revoked || tokenRecord.expiresAt < new Date()) {
+    throw new UnauthorizedError('Refresh token has been revoked or expired');
+  }
+
+  const isValid = await compareToken(refreshToken, tokenRecord.tokenHash);
+  if (!isValid) {
+    throw new UnauthorizedError('Invalid refresh token');
+  }
+
+  const groomer = await Groomer.findByPk(payload.groomerId);
+  if (!groomer || !groomer.isActive) {
+    throw new UnauthorizedError('Groomer not found');
+  }
+
   const accessToken = generateGroomerAccessToken({
     groomerId: groomer.id,
     email: groomer.email,
     role: 'groomer',
   });
-
-  return {
-    accessToken,
-    groomer: sanitizeGroomer(groomer),
-  };
+  return { accessToken };
 }
 
 export async function getGroomerProfile(groomerId: number): Promise<Record<string, unknown>> {

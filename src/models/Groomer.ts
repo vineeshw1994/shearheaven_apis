@@ -21,6 +21,8 @@ class Groomer extends Model<InferAttributes<Groomer>, InferCreationAttributes<Gr
   declare isActive: CreationOptional<boolean>;
   declare multiBookingEnabled: CreationOptional<boolean>;
   declare slotBookingLimit: CreationOptional<number>;
+  declare mustChangePassword: CreationOptional<boolean>;
+  declare tempLoginId: CreationOptional<string>;
   declare clientId: string;
   declare regionId: string;
   declare storeId: string;
@@ -89,6 +91,16 @@ Groomer.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
       defaultValue: 1,
+    },
+    mustChangePassword: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    tempLoginId: {
+      type: DataTypes.STRING(255),
+      allowNull: false,
+      defaultValue: '',
     },
     clientId: {
       type: DataTypes.STRING(50),

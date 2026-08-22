@@ -54,5 +54,22 @@ router.put('/groomer-unavailability/:id', adminController.updateUnavailability);
 router.delete('/groomer-unavailability/:id', adminController.deleteUnavailability);
 
 router.get('/groomer-bookings/:groomerId', adminController.getGroomerBookings);
+router.post('/groomer-bookings/:bookingId/approve', adminController.approveGroomerBooking);
+router.post('/groomer-bookings/:bookingId/reject', adminController.rejectGroomerBooking);
+
+router.get('/discounts', adminController.listDiscountsAdmin);
+router.post('/discounts', adminController.createDiscount);
+router.put('/discounts/:id', adminController.updateDiscount);
+router.delete('/discounts/:id', adminController.deleteDiscount);
+
+router.get('/offers', adminController.listOffersAdmin);
+router.post('/offers', adminController.createOffer);
+router.put('/offers/:id', adminController.updateOffer);
+router.delete('/offers/:id', adminController.deleteOffer);
+
+router.get('/store-content', adminController.listStoreContentAdmin);
+router.post('/store-content', adminController.upsertStoreContent);
+router.put('/store-content/:id', adminController.upsertStoreContent);
+router.delete('/store-content/:id', adminController.deleteStoreContent);
 
 export default router;
