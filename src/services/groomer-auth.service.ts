@@ -15,6 +15,7 @@ import {
   UnauthorizedError,
 } from '../utils/response';
 import { formatBooking } from './booking.service';
+import { createNotification } from './notification.service';
 
 export interface GroomerLoginInput {
   email: string;
@@ -92,6 +93,40 @@ async function listGroomerBookings(
     order,
   });
   return bookings.map((booking) => formatBooking(booking));
+}
+
+async function notifyBookingStatusToUser(
+  booking: Booking,
+  type: 'booking_confirmed' | 'booking_rejected',
+  status: string
+): Promise<void> {
+  const pet = booking.get('pet') as Pet | undefined;
+  const petLabel = pet?.petName ? ` for ${pet.petName}` : '';
+  const when = `${booking.bookingDate} at ${booking.startTime}`;
+  const title = type === 'booking_confirmed' ? 'Booking Confirmed' : 'Booking Declined';
+  const message =
+    type === 'booking_confirmed'
+      ? `Your grooming appointment${petLabel} on ${when} has been confirmed.`
+      : `Your grooming appointment${petLabel} on ${when} was declined by the groomer.`;
+
+  await createNotification({
+    userId: booking.userId,
+    title,
+    message,
+    type,
+    data: {
+      bookingId: booking.id,
+      status,
+      bookingDate: booking.bookingDate,
+      startTime: booking.startTime,
+      endTime: booking.endTime,
+      groomerId: booking.groomerId,
+      petId: booking.petId,
+    },
+    clientId: booking.clientId || '',
+    regionId: booking.regionId || '',
+    storeId: booking.storeId || '',
+  });
 }
 
 export interface GroomerSetupAccountInput {
@@ -315,6 +350,7 @@ export async function approveBooking(groomerId: number, bookingId: number): Prom
     throw new AppError('Only pending bookings can be approved', 400);
   }
   await booking.update({ status: 'confirmed' });
+  await notifyBookingStatusToUser(booking, 'booking_confirmed', 'confirmed');
   return formatBooking(booking);
 }
 
@@ -324,6 +360,7 @@ export async function rejectBooking(groomerId: number, bookingId: number): Promi
     throw new AppError('Only pending bookings can be rejected', 400);
   }
   await booking.update({ status: 'cancelled' });
+  await notifyBookingStatusToUser(booking, 'booking_rejected', 'cancelled');
   return formatBooking(booking);
 }
 

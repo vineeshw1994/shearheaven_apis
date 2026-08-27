@@ -214,6 +214,10 @@ export async function getAvailability(input: AvailabilityInput): Promise<Record<
     endTime: string;
     groomerId: number;
     groomerName: string;
+    bookingCount: number;
+    maxBookings: number;
+    remaining: number;
+    isAvailable: boolean;
   }> = [];
 
   for (const groomer of groomers) {
@@ -226,12 +230,20 @@ export async function getAvailability(input: AvailabilityInput): Promise<Record<
       start += SLOT_INTERVAL_MINUTES
     ) {
       const end = start + quote.totalDurationMinutes;
-      if (isSlotAvailable(groomerBookings, start, end, slotLimit)) {
+      const bookingCount = countOverlappingSlots(groomerBookings, start, end);
+      const maxBookings = slotLimit;
+      const remaining = Math.max(0, maxBookings - bookingCount);
+      const isAvailable = bookingCount < maxBookings;
+      if (isAvailable) {
         availableSlots.push({
           startTime: minutesToTime(start),
           endTime: minutesToTime(end),
           groomerId: groomer.id,
           groomerName: groomer.name,
+          bookingCount,
+          maxBookings,
+          remaining,
+          isAvailable,
         });
       }
     }
