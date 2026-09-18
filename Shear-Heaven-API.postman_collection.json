@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "shear-heaven-api-collection",
     "name": "Shear Heaven API",
-    "description": "Complete Postman collection for the Shear Heaven Node.js + TypeScript REST API.\n\n**Setup:**\n1. Import this collection into Postman.\n2. Set the `baseUrl` variable (default: production URL).\n3. Run **Login** or **Verify OTP** — saves `accessToken` and `refreshToken`.\n4. Run **Groomer Login** for groomer APIs — saves `groomerAccessToken`.\n5. User APIs use `Bearer {{accessToken}}`. Groomer APIs use `Bearer {{groomerAccessToken}}`.\n\n**Booking flow:**\n- Create booking → status `pending` (blocks slot)\n- Groomer approves → `confirmed`\n- User cancel (≥3h before) → pending: `cancelled`; confirmed: `cancellation_requested` → groomer approves → `cancelled`",
+    "description": "Complete Postman collection for the Shear Heaven Node.js + TypeScript REST API.\n\n**Setup:**\n1. Import this collection into Postman.\n2. Set the `baseUrl` variable (default: production URL).\n3. Run **Login** or **Verify OTP** — saves `accessToken` and `refreshToken`.\n4. Run **Groomer Login** for groomer APIs — saves `groomerAccessToken`.\n5. User APIs use `Bearer {{accessToken}}`. Groomer APIs use `Bearer {{groomerAccessToken}}`.\n\n**Booking flow:**\n- Create booking → status `pending` (blocks slot)\n- Groomer approves → `confirmed` + customer notification + Socket.IO event\n- Groomer rejects → `cancelled` + customer notification + Socket.IO event\n- User cancel (≥3h before) → pending: `cancelled`; confirmed: `cancellation_requested` → groomer approves → `cancelled`\n\n**Real-time notifications (Flutter):**\n- Connect Socket.IO to `{{baseUrl}}` path `/socket.io` with customer JWT (`auth.token`)\n- Listen for event: `notification`\n- Also poll `GET /api/notifications` for history",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -494,7 +494,7 @@
     },
     {
       "name": "Bookings",
-      "description": "User booking and availability APIs. Requires Bearer {{accessToken}}.\n\n**Status flow:** pending → confirmed (groomer approve) | cancelled\n\n**Slot blocking:** pending + confirmed + cancellation_requested count toward groomer slot limit (multi-booking per groomer settings).\n\n**Cancel rule:** User can cancel only if at least 3 hours remain before appointment (store `cancellationThresholdHours`, default 3). Pending → cancelled immediately. Confirmed → cancellation_requested until groomer approves.\n\nCatalog IDs: services 1-13, packages 1-3, add-ons 1-12, groomers 1-3.",
+      "description": "User booking and availability APIs. Requires Bearer {{accessToken}}.\n\n**Status flow:** pending → confirmed (groomer approve) | cancelled (groomer reject)\n\n**Slot blocking:** pending + confirmed + cancellation_requested count toward groomer slot limit (multi-booking per groomer settings).\n\n**Availability slots:** each available slot returns `bookingCount`, `maxBookings`, `remaining`, `isAvailable`.\n\n**Cancel rule:** User can cancel only if at least 3 hours remain before appointment (store `cancellationThresholdHours`, default 3). Pending → cancelled immediately. Confirmed → cancellation_requested until groomer approves.\n\nCatalog IDs: services 1-13, packages 1-3, add-ons 1-12, groomers 1-3.",
       "item": [
         {
           "name": "Get Availability",
@@ -513,7 +513,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "availability"]
             },
-            "description": "Returns groomer working hours, booked slots, service duration, and available time slots.\n\nPending and confirmed bookings block slots. If groomer multi-booking is enabled, a slot stays available until the slot limit is reached.\n\nOmit groomerId or send 0 for all groomers. packageId is optional."
+            "description": "Returns groomer working hours, booked slots, service duration, and available time slots.\n\n**Multi-booking:** For groomers with `multiBookingEnabled`, a slot stays available until `bookingCount >= slotBookingLimit`. Pending, confirmed, and cancellation_requested bookings count toward the limit.\n\nEach item in `availableSlots` includes:\n- `bookingCount` — overlapping bookings in that slot\n- `maxBookings` — groomer slot limit\n- `remaining` — `maxBookings - bookingCount`\n- `isAvailable` — `true` when `bookingCount < maxBookings`\n\nFull slots (`isAvailable: false`) are omitted from `availableSlots`.\n\nOmit groomerId or send 0 for all groomers. packageId is optional.\n\n**Example slot:**\n```json\n{\n  \"startTime\": \"09:00\",\n  \"endTime\": \"10:15\",\n  \"groomerId\": 1,\n  \"groomerName\": \"Merisa Brown\",\n  \"bookingCount\": 1,\n  \"maxBookings\": 3,\n  \"remaining\": 2,\n  \"isAvailable\": true\n}\n```"
           }
         },
         {
@@ -758,7 +758,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "approve"]
             },
-            "description": "Approve a pending booking → status becomes `confirmed`."
+            "description": "Approve a pending booking → status becomes `confirmed`.\n\n**Side effects:** Creates a notification for the customer (`type: booking_confirmed`) and emits Socket.IO event `notification` to room `user:{userId}`."
           }
         },
         {
@@ -771,7 +771,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "reject"]
             },
-            "description": "Reject a pending booking → status becomes `cancelled`."
+            "description": "Reject a pending booking → status becomes `cancelled`.\n\n**Side effects:** Creates a notification for the customer (`type: booking_rejected`) and emits Socket.IO event `notification` to room `user:{userId}`."
           }
         },
         {
@@ -1188,7 +1188,127 @@
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "admin", "groomer-bookings", "{{groomerId}}"]
                 },
-                "description": "Returns pending requests, cancellation requests, upcoming, past, and cancelled bookings for a groomer."
+                "description": "Returns pending requests, cancellation requests, upcoming, past, and cancelled bookings for a groomer.\n\n**Note:** `groomerId` in the URL is the **database groomer id** from **List Groomers** (not catalog groomer id 1–3). Each booking row includes `groomerName`."
+              }
+            },
+            {
+              "name": "Approve Booking (Admin)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/groomer-bookings/{{bookingId}}/approve",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "groomer-bookings", "{{bookingId}}", "approve"]
+                },
+                "description": "Admin approves a pending booking. Same as groomer approve — status `confirmed`, customer notification + Socket.IO event."
+              }
+            },
+            {
+              "name": "Reject Booking (Admin)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/groomer-bookings/{{bookingId}}/reject",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "groomer-bookings", "{{bookingId}}", "reject"]
+                },
+                "description": "Admin rejects a pending booking. Status `cancelled`, customer notification + Socket.IO event."
+              }
+            },
+            {
+              "name": "Complete Booking (Admin)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/groomer-bookings/{{bookingId}}/complete",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "groomer-bookings", "{{bookingId}}", "complete"]
+                },
+                "description": "Mark a past confirmed/pending booking as `completed`. Allowed only after the appointment end time."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Discounts",
+          "item": [
+            {
+              "name": "List Discounts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/discounts?ClientID=SHEAR-001&RegionId=DWG-001&StoreId=SHEAR-001",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "discounts"],
+                  "query": [
+                    { "key": "ClientID", "value": "SHEAR-001" },
+                    { "key": "RegionId", "value": "DWG-001" },
+                    { "key": "StoreId", "value": "SHEAR-001" }
+                  ]
+                },
+                "description": "List all discounts (active and inactive) for admin."
+              }
+            },
+            {
+              "name": "List Catalog Services",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/catalog/services",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "catalog", "services"]
+                },
+                "description": "Returns catalog services (ids 1–13 from service&packages.json) for discount service selection in admin UI."
+              }
+            },
+            {
+              "name": "Create Discount",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"SAVE10\",\n  \"name\": \"10% Off Grooming\",\n  \"description\": \"10 percent off selected services\",\n  \"serviceIds\": [1, 2, 10],\n  \"discountType\": \"percentage\",\n  \"discountValue\": 10,\n  \"minOrderAmount\": 0,\n  \"startDate\": \"2026-08-01\",\n  \"endDate\": \"2026-12-31\",\n  \"isActive\": true,\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/discounts",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "discounts"]
+                },
+                "description": "Create a discount. `serviceIds`: array of catalog service ids — empty array applies to all services. `discountType`: `percentage` or `fixed`."
+              }
+            },
+            {
+              "name": "Update Discount",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"10% Off Grooming Updated\",\n  \"serviceIds\": [1, 2],\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/discounts/{{scheduleRecordId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "discounts", "{{scheduleRecordId}}"]
+                }
+              }
+            },
+            {
+              "name": "Delete Discount",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/discounts/{{scheduleRecordId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "discounts", "{{scheduleRecordId}}"]
+                }
               }
             }
           ]
@@ -1486,12 +1606,77 @@
     },
     {
       "name": "Notifications",
+      "description": "User notification REST APIs + real-time Socket.IO.\n\n**Socket.IO (Flutter):**\n- URL: `{{baseUrl}}`, path: `/socket.io`\n- Auth: pass customer JWT as `auth: { token: '<accessToken>' }`\n- Event: `notification` — payload matches REST notification object\n\n**Booking notification types:**\n- `booking_confirmed` — groomer approved booking\n- `booking_rejected` — groomer rejected booking\n\nNotification `data` includes: `bookingId`, `status`, `bookingDate`, `startTime`, `endTime`, `groomerId`, `petId`.",
       "item": [
-        { "name": "List Notifications", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] } } },
-        { "name": "Mark Read", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications/1/read", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "1", "read"] } } },
-        { "name": "Mark All Read", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications/read-all", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "read-all"] } } },
-        { "name": "Delete Notification", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": { "raw": "{{baseUrl}}/api/notifications/1", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "1"] } } },
-        { "name": "Register Device Token", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"pushToken\": \"fcm-token-here\",\n  \"platform\": \"android\"\n}" }, "url": { "raw": "{{baseUrl}}/api/notifications/device-token", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "device-token"] } } }
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "Returns all notifications for the authenticated user, newest first."
+          }
+        },
+        {
+          "name": "Mark Read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/1/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "1", "read"]
+            }
+          }
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "read-all"]
+            }
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "1"]
+            }
+          }
+        },
+        {
+          "name": "Register Device Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"{{deviceId}}\",\n  \"pushToken\": \"fcm-token-here\",\n  \"platform\": \"android\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/device-token",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "device-token"]
+            },
+            "description": "Register FCM/APNs push token for offline push notifications."
+          }
+        }
       ]
     },
     {

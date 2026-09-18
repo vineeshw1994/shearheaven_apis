@@ -174,6 +174,7 @@ INSERT INTO `groomers` (`groomerCode`, `firstName`, `lastName`, `role`, `highlig
 VALUES
   ('G001', 'Merisa', 'Brown', 'Lead Groomer', 'Best lead groomer in town', 'Groomer', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('G002', 'Richard', 'Cooke', 'Senior Groomer', 'Best groomer in town, got award in 2025!', 'Groomer', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Tracie', 'Jamison', 'Groomer', 'Experienced groomer with a gentle touch', 'Groomer', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('B001', 'Jeremiah', 'Smith', 'Junio Bather', 'I am the best Bather', 'Bather', 1, 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW());
 
 INSERT INTO `holiday_list` (`holidayCode`, `name`, `date`, `description`, `isStoreSpecific`, `clientId`, `regionId`, `storeId`, `createdAt`, `updatedAt`)
@@ -210,6 +211,13 @@ VALUES
   ('G002', 'Thursday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('G002', 'Friday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('G002', 'Saturday', 1, '10:00', '15:00', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Wednesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Thursday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Friday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
+  ('G003', 'Saturday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('B001', 'Sunday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('B001', 'Monday', 0, '', '', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),
   ('B001', 'Tuesday', 1, '08:00', '17:30', 'SHEAR-001', 'DWG-001', 'SHEAR-001', NOW(), NOW()),

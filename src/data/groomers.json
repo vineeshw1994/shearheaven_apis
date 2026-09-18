@@ -16,6 +16,13 @@
 	  "LastName": "Cooke",
 	  "Role": "Senior Groomer",
 	  "Highlights": "Best groomer in town, got award in 2025!"
+	},
+	{
+	  "GroomerId": "G003",
+	  "FirstName": "Tracie",
+	  "LastName": "Jamison",
+	  "Role": "Groomer",
+	  "Highlights": "Experienced groomer with a gentle touch"
 	}
 	],
 	"Bathers": [
