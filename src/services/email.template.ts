@@ -92,3 +92,89 @@ Temporary Password: ${tempPassword}
 
 Please login and complete one-time account setup.`;
 }
+
+export interface BookingEmailDetails {
+  recipientName: string;
+  petName: string;
+  serviceName: string;
+  groomerName: string;
+  bookingDate: string;
+  startTime: string;
+  endTime: string;
+  totalPrice: number;
+  status: string;
+}
+
+export function buildBookingConfirmationEmailHtml(details: BookingEmailDetails): string {
+  const greeting = details.recipientName ? `Hi ${details.recipientName},` : 'Hello,';
+  const statusLabel =
+    details.status === 'confirmed'
+      ? 'Confirmed'
+      : details.status === 'pending'
+        ? 'Pending Confirmation'
+        : details.status;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Booking Confirmation - Shear Heaven</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f1ea;font-family:Georgia,'Times New Roman',serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#f4f1ea;padding:32px 16px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border-radius:18px;overflow:hidden;box-shadow:0 12px 32px rgba(31,42,36,0.12);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#1f2a24 0%,#2f6f5e 100%);padding:34px 28px;text-align:center;">
+              <h1 style="margin:0;color:#f7f3ea;font-size:30px;font-weight:700;">Shear Heaven</h1>
+              <p style="margin:8px 0 0;color:#c9d3cd;font-size:14px;">Your grooming appointment is booked</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:34px 28px;">
+              <h2 style="margin:0 0 10px;color:#1f2a24;font-size:24px;">Booking Confirmation</h2>
+              <p style="margin:0 0 24px;color:#5d6b64;font-size:16px;line-height:1.6;">${greeting}<br>Thank you for booking with Shear Heaven. Here are your appointment details.</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8faf8;border:1px solid #d9d3c7;border-radius:14px;overflow:hidden;">
+                <tr><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#5d6b64;font-size:13px;">Pet</td><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#1f2a24;font-size:15px;font-weight:700;text-align:right;">${details.petName}</td></tr>
+                <tr><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#5d6b64;font-size:13px;">Service</td><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#1f2a24;font-size:15px;font-weight:700;text-align:right;">${details.serviceName}</td></tr>
+                <tr><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#5d6b64;font-size:13px;">Groomer</td><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#1f2a24;font-size:15px;font-weight:700;text-align:right;">${details.groomerName}</td></tr>
+                <tr><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#5d6b64;font-size:13px;">Date</td><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#1f2a24;font-size:15px;font-weight:700;text-align:right;">${details.bookingDate}</td></tr>
+                <tr><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#5d6b64;font-size:13px;">Time</td><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#1f2a24;font-size:15px;font-weight:700;text-align:right;">${details.startTime} - ${details.endTime}</td></tr>
+                <tr><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#5d6b64;font-size:13px;">Total</td><td style="padding:14px 18px;border-bottom:1px solid #e8e2d8;color:#2f6f5e;font-size:18px;font-weight:700;text-align:right;">$${details.totalPrice.toFixed(2)}</td></tr>
+                <tr><td style="padding:14px 18px;color:#5d6b64;font-size:13px;">Status</td><td style="padding:14px 18px;color:#2f6f5e;font-size:15px;font-weight:700;text-align:right;">${statusLabel}</td></tr>
+              </table>
+              <p style="margin:24px 0 0;color:#5d6b64;font-size:15px;line-height:1.6;">${
+                details.status === 'pending'
+                  ? 'Your booking is awaiting groomer confirmation. We will notify you once it is approved.'
+                  : 'We look forward to pampering your pet. If you need to make changes, please use the Shear Heaven app.'
+              }</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#eef4f1;padding:18px 28px;text-align:center;border-top:1px solid #d9d3c7;">
+              <p style="margin:0;color:#5d6b64;font-size:12px;">&copy; ${new Date().getFullYear()} Shear Heaven. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export function buildBookingConfirmationEmailText(details: BookingEmailDetails): string {
+  return `Booking Confirmation - Shear Heaven
+
+Pet: ${details.petName}
+Service: ${details.serviceName}
+Groomer: ${details.groomerName}
+Date: ${details.bookingDate}
+Time: ${details.startTime} - ${details.endTime}
+Total: $${details.totalPrice.toFixed(2)}
+Status: ${details.status}
+
+Thank you for booking with Shear Heaven.`;
+}

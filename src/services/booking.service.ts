@@ -344,6 +344,9 @@ export async function createBooking(
     storeId: tenant.storeId,
   });
 
+  const { runBookingNotification, notifyBookingCreated } = await import('./booking-notification.service');
+  runBookingNotification(() => notifyBookingCreated(booking.id), 'booking_created');
+
   return {
     bookingId: booking.id,
     status: booking.status,
@@ -442,6 +445,9 @@ export async function createBookingByGroomer(
     regionId: tenant.regionId,
     storeId: tenant.storeId,
   });
+
+  const { runBookingNotification, notifyBookingCreatedByGroomer } = await import('./booking-notification.service');
+  runBookingNotification(() => notifyBookingCreatedByGroomer(booking.id), 'booking_created_by_groomer');
 
   return {
     bookingId: booking.id,
@@ -576,11 +582,15 @@ export async function cancelBooking(userId: number, bookingId: number): Promise<
 
   if (booking.status === 'pending') {
     await booking.update({ status: 'cancelled' });
+    const { runBookingNotification, notifyBookingCancelledByUser } = await import('./booking-notification.service');
+    runBookingNotification(() => notifyBookingCancelledByUser(booking), 'booking_cancelled');
     return formatBooking(booking);
   }
 
   if (booking.status === 'confirmed') {
     await booking.update({ status: 'cancellation_requested' });
+    const { runBookingNotification, notifyBookingCancelledByUser } = await import('./booking-notification.service');
+    runBookingNotification(() => notifyBookingCancelledByUser(booking), 'booking_cancellation_requested');
     return formatBooking(booking);
   }
 

@@ -4,6 +4,7 @@ import { sendSuccess } from '../utils/response';
 import { validateBody } from '../utils/validation';
 import { GroomerAuthRequest } from '../types/groomer';
 import * as bookingService from '../services/booking.service';
+import * as notificationService from '../services/notification.service';
 import Joi from 'joi';
 
 const loginSchema = Joi.object({
@@ -37,6 +38,12 @@ const groomerCreateBookingSchema = Joi.object({
   clientId: Joi.string().optional(),
   regionId: Joi.string().optional(),
   storeId: Joi.string().optional(),
+});
+
+const deviceTokenSchema = Joi.object({
+  deviceId: Joi.string().trim().required(),
+  pushToken: Joi.string().trim().required(),
+  platform: Joi.string().valid('android', 'ios', 'web').optional(),
 });
 
 const profileUpdateSchema = Joi.object({
@@ -176,6 +183,19 @@ export async function refreshToken(req: GroomerAuthRequest, res: Response, next:
     const { refreshToken } = validateBody<{ refreshToken: string }>(refreshSchema, req.body);
     const result = await groomerAuthService.refreshGroomerAccessToken(refreshToken);
     sendSuccess(res, 'Groomer access token refreshed successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function registerDeviceToken(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const data = validateBody<{ deviceId: string; pushToken: string; platform?: string }>(
+      deviceTokenSchema,
+      req.body
+    );
+    const row = await notificationService.registerGroomerDeviceToken(req.groomer!.id, data);
+    sendSuccess(res, 'Groomer device token registered successfully', row, 201);
   } catch (error) {
     next(error);
   }

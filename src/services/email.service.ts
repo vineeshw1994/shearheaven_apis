@@ -1,6 +1,14 @@
 import { mailTransporter } from '../config/mailer';
 import { env } from '../config/env';
-import { buildOtpEmailHtml, buildOtpEmailText, buildGroomerWelcomeEmailHtml, buildGroomerWelcomeEmailText } from './email.template';
+import {
+  buildOtpEmailHtml,
+  buildOtpEmailText,
+  buildGroomerWelcomeEmailHtml,
+  buildGroomerWelcomeEmailText,
+  buildBookingConfirmationEmailHtml,
+  buildBookingConfirmationEmailText,
+  BookingEmailDetails,
+} from './email.template';
 import { logger } from '../utils/logger';
 
 export async function sendOtpEmail(
@@ -43,6 +51,26 @@ export async function sendGroomerWelcomeEmail(
     logger.error('Failed to send groomer welcome email', {
       error: error instanceof Error ? error.message : 'Unknown error',
       to,
+    });
+    throw error;
+  }
+}
+
+export async function sendBookingConfirmationEmail(
+  details: BookingEmailDetails & { to: string }
+): Promise<void> {
+  try {
+    await mailTransporter.sendMail({
+      from: `"${env.smtp.fromName}" <${env.smtp.user}>`,
+      to: details.to,
+      subject: `${env.appName} - Booking Confirmation`,
+      text: buildBookingConfirmationEmailText(details),
+      html: buildBookingConfirmationEmailHtml(details),
+    });
+  } catch (error) {
+    logger.error('Failed to send booking confirmation email', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      to: details.to,
     });
     throw error;
   }

@@ -9,6 +9,7 @@ router.post('/setup-account', groomerAuthController.setupAccount);
 router.post('/refresh-token', groomerAuthController.refreshToken);
 router.get('/profile', authenticateGroomer, groomerAuthController.getProfile);
 router.put('/profile', authenticateGroomer, groomerAuthController.updateProfile);
+router.post('/device-token', authenticateGroomer, groomerAuthController.registerDeviceToken);
 
 router.get('/bookings/pending', authenticateGroomer, groomerAuthController.getPendingBookings);
 router.get('/bookings/upcoming', authenticateGroomer, groomerAuthController.getUpcomingBookings);

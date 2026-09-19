@@ -15,6 +15,7 @@ import {
   getOtpExpiryDate,
 } from '../utils/jwt';
 import { sendOtpEmail } from './email.service';
+import * as groomerAuthService from './groomer-auth.service';
 import * as deviceAuthService from './device-auth.service';
 import {
   ConflictError,
@@ -136,6 +137,29 @@ export async function loginUser(
   }
 
   return tokens;
+}
+
+export async function loginAccount(
+  email: string,
+  password: string,
+  deviceId?: string
+): Promise<Record<string, unknown>> {
+  const loginId = email.trim().toLowerCase();
+  const user = await User.findOne({ where: { email: loginId } });
+
+  if (user) {
+    const result = await loginUser(user.email, password, deviceId);
+    return {
+      userType: 'customer',
+      ...result,
+    };
+  }
+
+  const groomerResult = await groomerAuthService.loginGroomer({ email: loginId, password });
+  return {
+    userType: 'groomer',
+    ...groomerResult,
+  };
 }
 
 async function generateAuthTokens(user: User): Promise<AuthTokenResponse> {

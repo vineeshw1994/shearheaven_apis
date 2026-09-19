@@ -23,6 +23,7 @@ const optionalWithDefaults: Record<string, string> = {
   SMTP_FROM_NAME: 'Shear Heaven',
   NODE_ENV: 'development',
   BASE_URL: 'http://localhost:5000',
+  FIREBASE_SERVICE_ACCOUNT_PATH: 'shpr-3b7ce-firebase-adminsdk-fbsvc-5ba35ac169.json',
 };
 
 export const env = {
@@ -56,6 +57,11 @@ export const env = {
 
   baseUrl: (process.env.BASE_URL || optionalWithDefaults.BASE_URL).replace(/\/$/, ''),
   appName: process.env.APP_NAME || 'Shear Heaven',
+
+  firebase: {
+    serviceAccountPath:
+      process.env.FIREBASE_SERVICE_ACCOUNT_PATH || optionalWithDefaults.FIREBASE_SERVICE_ACCOUNT_PATH,
+  },
 };
 
 export function validateEnv(): void {

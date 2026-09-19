@@ -7,6 +7,7 @@ import { logger } from './utils/logger';
 import { ensureModels } from './models';
 import { alignScheduleSchema, seedScheduleData } from './services/schedule.seed';
 import { initSocketServer } from './config/socket';
+import { initFirebase } from './config/firebase';
 
 async function startServer(): Promise<void> {
   try {
@@ -23,6 +24,8 @@ async function startServer(): Promise<void> {
     } else {
       logger.warn('SMTP connection could not be verified. Signup OTP emails may fail.');
     }
+
+    initFirebase();
 
     const app = createApp();
     const httpServer = createServer(app);

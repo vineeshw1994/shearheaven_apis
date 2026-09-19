@@ -29,7 +29,7 @@ export async function signup(req: Request, res: Response, next: NextFunction): P
 export async function login(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const data = validateBody<{ email: string; password: string; deviceId?: string }>(loginSchema, req.body);
-    const result = await authService.loginUser(data.email, data.password, data.deviceId);
+    const result = await authService.loginAccount(data.email, data.password, data.deviceId);
     sendSuccess(res, 'Login successful', result);
   } catch (error) {
     next(error);

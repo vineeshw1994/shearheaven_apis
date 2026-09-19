@@ -2,6 +2,8 @@ import { Op } from 'sequelize';
 import { Notification, NotificationDeviceToken } from '../models';
 import { NotFoundError } from '../utils/response';
 import { emitNotificationToGroomer, emitNotificationToUser } from '../config/socket';
+import { sendPushToGroomer, sendPushToUser } from './push-notification.service';
+import { logger } from '../utils/logger';
 
 export interface CreateNotificationInput {
   userId?: number | null;
@@ -40,9 +42,29 @@ export async function createNotification(input: CreateNotificationInput): Promis
 
   if (input.userId) {
     emitNotificationToUser(input.userId, payload);
+    void sendPushToUser(input.userId, {
+      title: input.title,
+      body: input.message,
+      data: payload,
+    }).catch((error) => {
+      logger.error('Failed to send user push notification', {
+        userId: input.userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    });
   }
   if (input.groomerId) {
     emitNotificationToGroomer(input.groomerId, payload);
+    void sendPushToGroomer(input.groomerId, {
+      title: input.title,
+      body: input.message,
+      data: payload,
+    }).catch((error) => {
+      logger.error('Failed to send groomer push notification', {
+        groomerId: input.groomerId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    });
   }
 
   return payload;
@@ -91,11 +113,31 @@ export async function registerDeviceToken(
     where: { deviceId: input.deviceId, pushToken: input.pushToken },
   });
   if (existing) {
-    await existing.update({ userId, platform: input.platform || 'android' });
+    await existing.update({ userId, groomerId: null, platform: input.platform || 'android' });
     return existing.toJSON() as Record<string, unknown>;
   }
   const created = await NotificationDeviceToken.create({
     userId,
+    deviceId: input.deviceId,
+    pushToken: input.pushToken,
+    platform: input.platform || 'android',
+  });
+  return created.toJSON() as Record<string, unknown>;
+}
+
+export async function registerGroomerDeviceToken(
+  groomerId: number,
+  input: { deviceId: string; pushToken: string; platform?: string }
+): Promise<Record<string, unknown>> {
+  const existing = await NotificationDeviceToken.findOne({
+    where: { deviceId: input.deviceId, pushToken: input.pushToken },
+  });
+  if (existing) {
+    await existing.update({ groomerId, userId: null, platform: input.platform || 'android' });
+    return existing.toJSON() as Record<string, unknown>;
+  }
+  const created = await NotificationDeviceToken.create({
+    groomerId,
     deviceId: input.deviceId,
     pushToken: input.pushToken,
     platform: input.platform || 'android',
