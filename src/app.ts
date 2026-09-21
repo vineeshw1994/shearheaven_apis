@@ -12,6 +12,9 @@ import { env } from './config/env';
 export function createApp(): Application {
   const app = express();
 
+  // Required behind Nginx/reverse proxy so rate-limit uses real client IPs from X-Forwarded-For
+  app.set('trust proxy', 1);
+
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   }));
