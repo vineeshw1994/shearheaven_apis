@@ -463,7 +463,10 @@ function bookingRowActions(item) {
     actions.push(`<button type="button" data-approve-booking="${item.bookingId}">Accept</button>`);
     actions.push(`<button type="button" class="danger" data-reject-booking="${item.bookingId}">Reject</button>`);
   }
-  if (['confirmed', 'pending'].includes(String(item.status)) && isBookingEndPast(item)) {
+  if (item.status === 'confirmed') {
+    actions.push(`<button type="button" data-start-booking="${item.bookingId}">Start</button>`);
+  }
+  if (item.status === 'in_progress') {
     actions.push(`<button type="button" data-complete-booking="${item.bookingId}">Complete</button>`);
   }
   if (!actions.length) return '<td>-</td>';
@@ -516,6 +519,19 @@ function attachBookingActionHandlers(contentEl, reloadFn) {
       try {
         await api(`/api/admin/groomer-bookings/${bookingId}/reject`, { method: 'POST' });
         showToast('Booking rejected successfully');
+        await reloadFn();
+      } catch (error) {
+        showToast(error.message, 'error');
+        setStatus(error.message, true);
+      }
+    });
+  });
+  contentEl.querySelectorAll('[data-start-booking]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const bookingId = button.getAttribute('data-start-booking');
+      try {
+        await api(`/api/admin/groomer-bookings/${bookingId}/start`, { method: 'POST' });
+        showToast('Appointment started');
         await reloadFn();
       } catch (error) {
         showToast(error.message, 'error');

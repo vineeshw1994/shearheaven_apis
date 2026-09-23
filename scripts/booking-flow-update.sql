@@ -15,6 +15,7 @@ ALTER TABLE `bookings`
   MODIFY COLUMN `status` ENUM(
     'pending',
     'confirmed',
+    'in_progress',
     'cancelled',
     'completed',
     'cancellation_requested'

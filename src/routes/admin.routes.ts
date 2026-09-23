@@ -56,6 +56,7 @@ router.delete('/groomer-unavailability/:id', adminController.deleteUnavailabilit
 router.get('/groomer-bookings/:groomerId', adminController.getGroomerBookings);
 router.post('/groomer-bookings/:bookingId/approve', adminController.approveGroomerBooking);
 router.post('/groomer-bookings/:bookingId/reject', adminController.rejectGroomerBooking);
+router.post('/groomer-bookings/:bookingId/start', adminController.startGroomerBooking);
 router.post('/groomer-bookings/:bookingId/complete', adminController.completeGroomerBooking);
 
 router.get('/discounts', adminController.listDiscountsAdmin);

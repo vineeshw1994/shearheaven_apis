@@ -95,19 +95,41 @@ async function listGroomerBookings(
   return bookings.map((booking) => formatBooking(booking));
 }
 
+type BookingUserNotificationType =
+  | 'booking_confirmed'
+  | 'booking_rejected'
+  | 'booking_in_progress'
+  | 'booking_completed';
+
 async function notifyBookingStatusToUser(
   booking: Booking,
-  type: 'booking_confirmed' | 'booking_rejected',
+  type: BookingUserNotificationType,
   status: string
 ): Promise<void> {
   const pet = booking.get('pet') as Pet | undefined;
   const petLabel = pet?.petName ? ` for ${pet.petName}` : '';
   const when = `${booking.bookingDate} at ${booking.startTime}`;
-  const title = type === 'booking_confirmed' ? 'Booking Confirmed' : 'Booking Declined';
-  const message =
-    type === 'booking_confirmed'
-      ? `Your grooming appointment${petLabel} on ${when} has been confirmed.`
-      : `Your grooming appointment${petLabel} on ${when} was declined by the groomer.`;
+
+  const copy: Record<BookingUserNotificationType, { title: string; message: string }> = {
+    booking_confirmed: {
+      title: 'Booking Confirmed',
+      message: `Your grooming appointment${petLabel} on ${when} has been confirmed.`,
+    },
+    booking_rejected: {
+      title: 'Booking Declined',
+      message: `Your grooming appointment${petLabel} on ${when} was declined by the groomer.`,
+    },
+    booking_in_progress: {
+      title: 'Appointment Started',
+      message: `Your grooming appointment${petLabel} on ${when} is now in progress.`,
+    },
+    booking_completed: {
+      title: 'Appointment Completed',
+      message: `Your grooming appointment${petLabel} on ${when} has been completed. Thank you!`,
+    },
+  };
+
+  const { title, message } = copy[type];
 
   await createNotification({
     userId: booking.userId,
@@ -300,8 +322,12 @@ export async function getGroomerUpcomingBookings(groomerId: number): Promise<Rec
   return listGroomerBookings(
     groomerId,
     {
-      status: { [Op.in]: ['pending', 'confirmed', 'cancellation_requested'] },
-      [Op.or]: [{ bookingDate: { [Op.gt]: date } }, { bookingDate: date, startTime: { [Op.gte]: time } }],
+      status: { [Op.in]: ['pending', 'confirmed', 'in_progress', 'cancellation_requested'] },
+      [Op.or]: [
+        { status: 'in_progress' },
+        { bookingDate: { [Op.gt]: date } },
+        { bookingDate: date, startTime: { [Op.gte]: time } },
+      ],
     },
     [
       ['bookingDate', 'ASC'],
@@ -364,21 +390,24 @@ export async function rejectBooking(groomerId: number, bookingId: number): Promi
   return formatBooking(booking);
 }
 
+export async function startBooking(groomerId: number, bookingId: number): Promise<Record<string, unknown>> {
+  const booking = await findGroomerBooking(groomerId, bookingId);
+  if (booking.status !== 'confirmed') {
+    throw new AppError('Only confirmed bookings can be started', 400);
+  }
+  await booking.update({ status: 'in_progress' });
+  await notifyBookingStatusToUser(booking, 'booking_in_progress', 'in_progress');
+  return formatBooking(booking);
+}
+
 export async function completeBooking(groomerId: number, bookingId: number): Promise<Record<string, unknown>> {
   const booking = await findGroomerBooking(groomerId, bookingId);
-  if (!['pending', 'confirmed'].includes(booking.status)) {
-    throw new AppError('Only pending or confirmed bookings can be completed', 400);
-  }
-
-  const { date, time } = nowParts();
-  if (
-    String(booking.bookingDate) > date ||
-    (String(booking.bookingDate) === date && String(booking.endTime) > time)
-  ) {
-    throw new AppError('Booking can only be completed after the appointment end time', 400);
+  if (booking.status !== 'in_progress') {
+    throw new AppError('Only in-progress bookings can be completed', 400);
   }
 
   await booking.update({ status: 'completed' });
+  await notifyBookingStatusToUser(booking, 'booking_completed', 'completed');
   return formatBooking(booking);
 }
 

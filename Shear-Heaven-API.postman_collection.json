@@ -658,7 +658,7 @@
     },
     {
       "name": "Groomer Auth",
-      "description": "Groomer booking management and device tokens.\n\n**Login:** Use **Auth → Login (Groomer Example)** (`POST /api/auth/login`) for unified login, or legacy **Groomer Login** below.\n\nDefault seed accounts: g001@shearheaven.com, g002@shearheaven.com, g003@shearheaven.com / Groomer@123\n\n**Push notifications:** Register groomer FCM token via **Register Groomer Device Token** before testing booking push alerts.",
+      "description": "Groomer booking management and device tokens.\n\n**Login:** Use **Auth → Login (Groomer Example)** (`POST /api/auth/login`) for unified login, or legacy **Groomer Login** below.\n\nDefault seed accounts: g001@shearheaven.com, g002@shearheaven.com, g003@shearheaven.com / Groomer@123\n\n**Appointment status flow:** `pending` → **Approve** → `confirmed` → **Start Appointment** → `in_progress` → **Complete Appointment** → `completed`. Reject/Cancel flows unchanged.\n\n**Push notifications:** Register groomer FCM token via **Register Groomer Device Token** before testing booking push alerts.",
       "item": [
         {
           "name": "Groomer Login",
@@ -768,7 +768,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "upcoming"]
             },
-            "description": "Upcoming bookings for this groomer (pending, confirmed, cancellation_requested)."
+            "description": "Upcoming bookings for this groomer (pending, confirmed, in_progress, cancellation_requested)."
           }
         },
         {
@@ -834,6 +834,32 @@
               "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "reject"]
             },
             "description": "Reject a pending booking → status becomes `cancelled`.\n\n**Side effects:** Customer notification (`type: booking_rejected`) via DB + **Firebase push** + Socket.IO event `notification` to room `user:{userId}`."
+          }
+        },
+        {
+          "name": "Start Appointment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "start"]
+            },
+            "description": "Start a confirmed appointment → status becomes `in_progress`.\n\n**Side effects:** Customer notification (`type: booking_in_progress`) via DB + **Firebase push** + Socket.IO."
+          }
+        },
+        {
+          "name": "Complete Appointment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{groomerAccessToken}}", "type": "text" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/groomer-auth/bookings/{{bookingId}}/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "groomer-auth", "bookings", "{{bookingId}}", "complete"]
+            },
+            "description": "Complete an in-progress appointment → status becomes `completed`.\n\n**Side effects:** Customer notification (`type: booking_completed`) via DB + **Firebase push** + Socket.IO."
           }
         },
         {
@@ -1280,7 +1306,20 @@
               }
             },
             {
-              "name": "Complete Booking (Admin)",
+              "name": "Start Appointment (Admin)",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/groomer-bookings/{{bookingId}}/start",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "admin", "groomer-bookings", "{{bookingId}}", "start"]
+                },
+                "description": "Admin: confirmed → `in_progress`. Same as groomer **Start Appointment**."
+              }
+            },
+            {
+              "name": "Complete Appointment (Admin)",
               "request": {
                 "method": "POST",
                 "header": [],
@@ -1289,7 +1328,7 @@
                   "host": ["{{baseUrl}}"],
                   "path": ["api", "admin", "groomer-bookings", "{{bookingId}}", "complete"]
                 },
-                "description": "Mark a past confirmed/pending booking as `completed`. Allowed only after the appointment end time."
+                "description": "Admin: in_progress → `completed`. Same as groomer **Complete Appointment**."
               }
             }
           ]
@@ -1668,7 +1707,7 @@
     },
     {
       "name": "Notifications",
-      "description": "User notification REST APIs + real-time delivery.\n\n**Register push token first:** `POST /api/notifications/device-token` with FCM token from Flutter.\n\n**Firebase push:** Sent automatically when notifications are created (requires `FIREBASE_SERVICE_ACCOUNT_PATH` on server).\n\n**Socket.IO (Flutter):**\n- URL: `{{baseUrl}}`, path: `/socket.io`\n- Auth: pass customer JWT as `auth: { token: '<accessToken>' }`\n- Event: `notification` — payload matches REST notification object\n\n**Booking notification types:**\n| Type | Trigger |\n|------|---------|\n| `booking_created` | Customer creates booking (customer + groomer) |\n| `booking_confirmed` | Groomer approves OR groomer creates booking for user |\n| `booking_rejected` | Groomer rejects pending booking |\n| `booking_cancelled` | Customer cancels pending booking |\n| `booking_cancellation_requested` | Customer requests cancel on confirmed booking |\n\nNotification `data` includes: `bookingId`, `status`, `bookingDate`, `startTime`, `endTime`, `groomerId`, `petId`, `serviceId`.",
+      "description": "User notification REST APIs + real-time delivery.\n\n**Register push token first:** `POST /api/notifications/device-token` with FCM token from Flutter.\n\n**Firebase push:** Sent automatically when notifications are created (requires `FIREBASE_SERVICE_ACCOUNT_PATH` on server).\n\n**Socket.IO (Flutter):**\n- URL: `{{baseUrl}}`, path: `/socket.io`\n- Auth: pass customer JWT as `auth: { token: '<accessToken>' }`\n- Event: `notification` — payload matches REST notification object\n\n**Booking notification types:**\n| Type | Trigger |\n|------|---------|\n| `booking_created` | Customer creates booking (customer + groomer) |\n| `booking_confirmed` | Groomer approves OR groomer creates booking for user |\n| `booking_rejected` | Groomer rejects pending booking |\n| `booking_in_progress` | Groomer starts confirmed appointment |\n| `booking_completed` | Groomer completes in-progress appointment |\n| `booking_cancelled` | Customer cancels pending booking |\n| `booking_cancellation_requested` | Customer requests cancel on confirmed booking |\n\nNotification `data` includes: `bookingId`, `status`, `bookingDate`, `startTime`, `endTime`, `groomerId`, `petId`, `serviceId`.",
       "item": [
         {
           "name": "List Notifications",

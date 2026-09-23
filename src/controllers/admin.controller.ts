@@ -383,6 +383,21 @@ export async function rejectGroomerBooking(req: Request, res: Response, next: Ne
   }
 }
 
+export async function startGroomerBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const bookingId = Number(req.params.bookingId);
+    const { Booking } = await import('../models');
+    const booking = await Booking.findByPk(bookingId);
+    if (!booking) {
+      throw new NotFoundError('Booking not found');
+    }
+    const result = await groomerAuthService.startBooking(booking.groomerId, bookingId);
+    sendSuccess(res, 'Appointment started successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function completeGroomerBooking(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const bookingId = Number(req.params.bookingId);
@@ -392,7 +407,7 @@ export async function completeGroomerBooking(req: Request, res: Response, next: 
       throw new NotFoundError('Booking not found');
     }
     const result = await groomerAuthService.completeBooking(booking.groomerId, bookingId);
-    sendSuccess(res, 'Booking completed successfully', result);
+    sendSuccess(res, 'Appointment completed successfully', result);
   } catch (error) {
     next(error);
   }

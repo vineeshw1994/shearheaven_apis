@@ -147,6 +147,24 @@ export async function rejectBooking(req: GroomerAuthRequest, res: Response, next
   }
 }
 
+export async function startBooking(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const booking = await groomerAuthService.startBooking(req.groomer!.id, Number(req.params.id));
+    sendSuccess(res, 'Appointment started successfully', booking);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function completeBooking(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const booking = await groomerAuthService.completeBooking(req.groomer!.id, Number(req.params.id));
+    sendSuccess(res, 'Appointment completed successfully', booking);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function approveCancellation(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const booking = await groomerAuthService.approveCancellation(req.groomer!.id, Number(req.params.id));

@@ -137,6 +137,7 @@ async function alignBookingFlowSchema(): Promise<void> {
       MODIFY COLUMN \`status\` ENUM(
         'pending',
         'confirmed',
+        'in_progress',
         'cancelled',
         'completed',
         'cancellation_requested'

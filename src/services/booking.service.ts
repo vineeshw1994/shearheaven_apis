@@ -52,7 +52,7 @@ export interface AvailabilityInput {
 }
 
 const SLOT_INTERVAL_MINUTES = 15;
-const SLOT_BLOCKING_STATUSES = ['pending', 'confirmed', 'cancellation_requested'];
+const SLOT_BLOCKING_STATUSES = ['pending', 'confirmed', 'in_progress', 'cancellation_requested'];
 
 function overlaps(startA: number, endA: number, startB: number, endB: number): boolean {
   return startA < endB && endA > startB;
@@ -563,6 +563,9 @@ export async function cancelBooking(userId: number, bookingId: number): Promise<
   if (booking.status === 'completed') {
     throw new AppError('Completed bookings cannot be cancelled', 400);
   }
+  if (booking.status === 'in_progress') {
+    throw new AppError('Appointments in progress cannot be cancelled', 400);
+  }
   if (isBookingInPast(booking.bookingDate, booking.endTime)) {
     throw new AppError('Past bookings cannot be cancelled', 400);
   }
@@ -602,8 +605,12 @@ export async function getUpcomingBookings(userId: number): Promise<Record<string
   return listUserBookings(
     userId,
     {
-      status: { [Op.in]: ['pending', 'confirmed', 'cancellation_requested'] },
-      [Op.or]: [{ bookingDate: { [Op.gt]: date } }, { bookingDate: date, startTime: { [Op.gte]: time } }],
+      status: { [Op.in]: ['pending', 'confirmed', 'in_progress', 'cancellation_requested'] },
+      [Op.or]: [
+        { status: 'in_progress' },
+        { bookingDate: { [Op.gt]: date } },
+        { bookingDate: date, startTime: { [Op.gte]: time } },
+      ],
     },
     [
       ['bookingDate', 'ASC'],
@@ -671,8 +678,9 @@ export async function listGroomerBookingsForAdmin(groomerDbId: number): Promise<
   const cancellationRequests = formatted.filter((item) => item.status === 'cancellation_requested');
   const upcoming = formatted.filter(
     (item) =>
-      ['pending', 'confirmed', 'cancellation_requested'].includes(String(item.status)) &&
-      (String(item.bookingDate) > date ||
+      ['pending', 'confirmed', 'in_progress', 'cancellation_requested'].includes(String(item.status)) &&
+      (item.status === 'in_progress' ||
+        String(item.bookingDate) > date ||
         (String(item.bookingDate) === date && String(item.startTime) >= time))
   );
   const past = formatted.filter(

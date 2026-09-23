@@ -19,6 +19,8 @@ router.get('/bookings/cancellation-requests', authenticateGroomer, groomerAuthCo
 
 router.post('/bookings/:id/approve', authenticateGroomer, groomerAuthController.approveBooking);
 router.post('/bookings/:id/reject', authenticateGroomer, groomerAuthController.rejectBooking);
+router.post('/bookings/:id/start', authenticateGroomer, groomerAuthController.startBooking);
+router.post('/bookings/:id/complete', authenticateGroomer, groomerAuthController.completeBooking);
 router.post('/bookings/:id/approve-cancellation', authenticateGroomer, groomerAuthController.approveCancellation);
 router.post('/bookings/:id/reject-cancellation', authenticateGroomer, groomerAuthController.rejectCancellation);
 router.post('/bookings/create-for-user', authenticateGroomer, groomerAuthController.createBookingForUser);
