@@ -316,8 +316,38 @@ th { background: #eef4f1; color: var(--muted); font-weight: 700; }
   background: #e7f0eb;
 }
 
+.customer-edit-form label {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.customer-edit-form input[type="text"],
+.customer-edit-form input[type="email"] {
+  color: var(--ink);
+}
+
+.customer-edit-form .checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.customer-edit-form .checkbox-inline input {
+  width: auto;
+}
+
+.customer-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
 .customer-detail {
-  margin-top: 8px;
+  margin-bottom: 16px;
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 12px;

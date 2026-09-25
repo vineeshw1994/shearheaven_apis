@@ -31,6 +31,7 @@ router.delete('/stores/:id', adminController.deleteStore);
 router.get('/groomers', adminController.listGroomers);
 router.get('/customers', adminController.listCustomers);
 router.get('/customers/:userId', adminController.getCustomerDetail);
+router.put('/customers/:userId', adminController.updateCustomer);
 router.post('/groomers', adminController.createGroomer);
 router.put('/groomers/:id', adminController.updateGroomer);
 router.delete('/groomers/:id', adminController.deleteGroomer);

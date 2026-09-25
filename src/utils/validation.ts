@@ -183,6 +183,14 @@ export function validatePetForm<T>(schema: Joi.ObjectSchema, body: Record<string
   return validateBody<T>(schema, normalizePetFormBody(body));
 }
 
+export const adminCustomerUpdateSchema = Joi.object({
+  name: Joi.string().trim().min(2).max(100).optional(),
+  email: Joi.string().trim().email().optional(),
+  mobile: mobileSchema.optional(),
+  emailVerified: Joi.boolean().optional(),
+  ...tenantSchema,
+}).min(1);
+
 export function validateBody<T>(schema: Joi.ObjectSchema, data: unknown): T {
   const { error, value } = schema.validate(data, {
     abortEarly: false,

@@ -14,7 +14,7 @@ import {
 } from '../models';
 import { formatBooking } from './booking.service';
 import { getUserPets } from './pet.service';
-import { NotFoundError, ValidationError } from '../utils/response';
+import { ConflictError, NotFoundError, ValidationError } from '../utils/response';
 import { DAYS_OF_WEEK, resolveTenant, TenantInput } from '../utils/schedule';
 
 function tenantFilter(query: TenantInput) {
@@ -234,6 +234,54 @@ export async function getCustomerDetail(userId: number) {
     pets,
     bookings: bookings.map((booking) => formatBooking(booking)),
   };
+}
+
+export interface AdminCustomerUpdateInput {
+  name?: string;
+  email?: string;
+  mobile?: string;
+  emailVerified?: boolean;
+  clientId?: string;
+  regionId?: string;
+  storeId?: string;
+}
+
+export async function updateCustomer(userId: number, input: AdminCustomerUpdateInput) {
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new NotFoundError('Customer not found');
+  }
+
+  if (input.email !== undefined) {
+    const email = input.email.trim().toLowerCase();
+    const existing = await User.findOne({ where: { email } });
+    if (existing && existing.id !== userId) {
+      throw new ConflictError('Email is already registered to another customer');
+    }
+  }
+
+  if (input.mobile !== undefined) {
+    const mobile = input.mobile.trim();
+    const existing = await User.findOne({ where: { mobile } });
+    if (existing && existing.id !== userId) {
+      throw new ConflictError('Mobile number is already registered to another customer');
+    }
+  }
+
+  const updates: Partial<AdminCustomerUpdateInput> = {};
+  if (input.name !== undefined) updates.name = input.name.trim();
+  if (input.email !== undefined) updates.email = input.email.trim().toLowerCase();
+  if (input.mobile !== undefined) updates.mobile = input.mobile.trim();
+  if (input.emailVerified !== undefined) updates.emailVerified = input.emailVerified;
+  if (input.clientId !== undefined) updates.clientId = input.clientId.trim();
+  if (input.regionId !== undefined) updates.regionId = input.regionId.trim();
+  if (input.storeId !== undefined) updates.storeId = input.storeId.trim();
+
+  await user.update(updates);
+
+  const data = user.toJSON() as Record<string, unknown>;
+  data.shop = shopInfo(user.clientId, user.regionId, user.storeId);
+  return data;
 }
 
 export async function createGroomer(body: TenantInput & Record<string, unknown>) {

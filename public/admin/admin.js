@@ -643,11 +643,11 @@ async function renderCustomersView() {
   bodyEl.innerHTML = `<tr><td colspan="20">
     <div class="customers-panel">
       <p class="panel-note">Uses header tenant filters. Shows customers matching the shop <em>or</em> with empty ClientID/RegionId/StoreId (not assigned).</p>
+      <div id="customerDetailWrap" class="customer-detail hidden"></div>
       <label>Search customers
         <input type="search" id="customerSearchInput" placeholder="Name, email, or mobile" />
       </label>
       <div id="customersListWrap"></div>
-      <div id="customerDetailWrap" class="customer-detail hidden"></div>
     </div>
   </td></tr>`;
 
@@ -706,9 +706,18 @@ async function renderCustomersView() {
     setStatus(`${filtered.length} customer(s)`);
   }
 
+  function syncCustomerInList(updated) {
+    const index = customers.findIndex((item) => Number(item.id) === Number(updated.id));
+    if (index >= 0) {
+      customers[index] = { ...customers[index], ...updated, shop: updated.shop };
+    }
+    renderCustomerList();
+  }
+
   async function loadCustomerDetail(userId) {
     detailWrap.classList.remove('hidden');
     detailWrap.innerHTML = '<p>Loading customer detail...</p>';
+    detailWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
     try {
       const data = await api(`/api/admin/customers/${userId}`);
       const customer = data.customer;
@@ -752,16 +761,29 @@ async function renderCustomersView() {
           <h3>${escapeHtml(customer.name)} <span class="muted">#${customer.id}</span></h3>
           <button type="button" class="secondary" id="closeCustomerDetailBtn">Close</button>
         </div>
-        <div class="detail-grid">
-          <div class="detail-card">
-            <h4>Contact</h4>
-            <p><strong>Email:</strong> ${escapeHtml(customer.email)}</p>
-            <p><strong>Mobile:</strong> ${escapeHtml(customer.mobile || '-')}</p>
-            <p><strong>Email verified:</strong> ${customer.emailVerified ? 'Yes' : 'No'}</p>
-            <p><strong>Registered:</strong> ${customer.createdAt ? escapeHtml(String(customer.createdAt).slice(0, 10)) : '-'}</p>
+        <form id="customerEditForm" class="customer-edit-form">
+          <div class="detail-grid">
+            <div class="detail-card">
+              <h4>Edit customer</h4>
+              <label>Name<input type="text" name="name" value="${escapeHtml(customer.name)}" required /></label>
+              <label>Email<input type="email" name="email" value="${escapeHtml(customer.email)}" required /></label>
+              <label>Mobile<input type="text" name="mobile" value="${escapeHtml(customer.mobile || '')}" required /></label>
+              <label class="checkbox-inline">Email verified<input type="checkbox" name="emailVerified" ${customer.emailVerified ? 'checked' : ''} /></label>
+              <p class="field-help">Registered: ${customer.createdAt ? escapeHtml(String(customer.createdAt).slice(0, 10)) : '-'}</p>
+            </div>
+            <div class="detail-card">
+              <h4>Shop (tenant)</h4>
+              <label>ClientID<input type="text" name="clientId" value="${escapeHtml(customer.clientId || '')}" /></label>
+              <label>RegionId<input type="text" name="regionId" value="${escapeHtml(customer.regionId || '')}" /></label>
+              <label>StoreId<input type="text" name="storeId" value="${escapeHtml(customer.storeId || '')}" /></label>
+              <button type="button" class="secondary" id="applyHeaderTenantBtn">Use header filter values</button>
+              ${shopInfoHtml(customer.shop, 'Current assignment')}
+            </div>
           </div>
-          ${shopInfoHtml(customer.shop, 'Customer shop (tenant)')}
-        </div>
+          <div class="customer-form-actions">
+            <button type="submit">Save customer</button>
+          </div>
+        </form>
         <section class="booking-section">
           <h3>Pets (${pets.length})</h3>
           <table>
@@ -786,6 +808,39 @@ async function renderCustomersView() {
       document.getElementById('closeCustomerDetailBtn').addEventListener('click', () => {
         detailWrap.classList.add('hidden');
         detailWrap.innerHTML = '';
+      });
+
+      document.getElementById('applyHeaderTenantBtn').addEventListener('click', () => {
+        const form = document.getElementById('customerEditForm');
+        form.elements.clientId.value = document.getElementById('filterClientId').value.trim();
+        form.elements.regionId.value = document.getElementById('filterRegionId').value.trim();
+        form.elements.storeId.value = document.getElementById('filterStoreId').value.trim();
+      });
+
+      document.getElementById('customerEditForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        const body = {
+          name: form.elements.name.value.trim(),
+          email: form.elements.email.value.trim(),
+          mobile: form.elements.mobile.value.trim(),
+          emailVerified: form.elements.emailVerified.checked,
+          clientId: form.elements.clientId.value.trim(),
+          regionId: form.elements.regionId.value.trim(),
+          storeId: form.elements.storeId.value.trim(),
+        };
+        try {
+          const updated = await api(`/api/admin/customers/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+          });
+          showToast('Customer updated successfully');
+          syncCustomerInList(updated);
+          await loadCustomerDetail(userId);
+        } catch (error) {
+          showToast(error.message, 'error');
+          setStatus(error.message, true);
+        }
       });
 
       listWrap.querySelectorAll('.customer-row').forEach((row) => {

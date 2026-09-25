@@ -7,7 +7,7 @@ import * as offerService from '../services/offer.service';
 import * as contentService from '../services/content.service';
 import { getServices } from '../services/catalog.service';
 import { NotFoundError, sendSuccess } from '../utils/response';
-import { validateBody } from '../utils/validation';
+import { adminCustomerUpdateSchema, validateBody } from '../utils/validation';
 import {
   groomerCreateSchema,
   groomerUpdateSchema,
@@ -168,6 +168,17 @@ export async function getCustomerDetail(req: Request, res: Response, next: NextF
     const userId = Number(req.params.userId);
     const detail = await adminService.getCustomerDetail(userId);
     sendSuccess(res, 'Customer detail retrieved successfully', detail);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateCustomer(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = Number(req.params.userId);
+    const data = validateBody<adminService.AdminCustomerUpdateInput>(adminCustomerUpdateSchema, req.body);
+    const customer = await adminService.updateCustomer(userId, data);
+    sendSuccess(res, 'Customer updated successfully', customer);
   } catch (error) {
     next(error);
   }
