@@ -154,6 +154,25 @@ export async function listGroomers(req: Request, res: Response, next: NextFuncti
   }
 }
 
+export async function listCustomers(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const rows = await adminService.listCustomers(req.query);
+    sendSuccess(res, 'Customers retrieved successfully', rows);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getCustomerDetail(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = Number(req.params.userId);
+    const detail = await adminService.getCustomerDetail(userId);
+    sendSuccess(res, 'Customer detail retrieved successfully', detail);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function createGroomer(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const data = validateBody<Parameters<typeof adminService.createGroomer>[0]>(groomerCreateSchema, req.body);

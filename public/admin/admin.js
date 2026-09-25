@@ -35,10 +35,29 @@ const resources = {
       { name: 'cancellationThresholdHours', label: 'Cancel Threshold (hours)', type: 'number' },
     ],
   },
+  customers: {
+    title: 'Customers',
+    custom: true,
+  },
   groomers: {
     title: 'Groomers',
     path: '/api/admin/groomers',
-    columns: ['id', 'groomerCode', 'firstName', 'lastName', 'email', 'multiBookingEnabled', 'slotBookingLimit', 'role', 'type', 'isActive'],
+    columns: [
+      'id',
+      'groomerCode',
+      'firstName',
+      'lastName',
+      'email',
+      'clientId',
+      'regionId',
+      'storeId',
+      'shopAssigned',
+      'multiBookingEnabled',
+      'slotBookingLimit',
+      'role',
+      'type',
+      'isActive',
+    ],
     fields: [
       { name: 'groomerCode', label: 'Groomer Code', required: true },
       { name: 'firstName', label: 'First Name', required: true },
@@ -145,7 +164,19 @@ const resources = {
   },
 };
 
-const tabOrder = ['clients', 'regions', 'stores', 'groomers', 'groomerBookings', 'discounts', 'holidays', 'storeHours', 'groomerHours', 'unavailability'];
+const tabOrder = [
+  'clients',
+  'regions',
+  'stores',
+  'customers',
+  'groomers',
+  'groomerBookings',
+  'discounts',
+  'holidays',
+  'storeHours',
+  'groomerHours',
+  'unavailability',
+];
 let currentKey = 'clients';
 let rows = [];
 let groomers = [];
@@ -237,9 +268,14 @@ function serviceLabel(serviceIds) {
     .join(', ');
 }
 
-function formatCell(column, value) {
+function formatCell(column, value, row) {
   if (column === 'serviceIds') {
     return serviceLabel(Array.isArray(value) ? value : []);
+  }
+  if (column === 'shopAssigned' && row?.shop) {
+    return row.shop.shopAssigned
+      ? `<span class="shop-badge ok">Assigned</span>`
+      : `<span class="shop-badge warn">Not assigned</span>`;
   }
   if (column === 'groomerCode' && (currentKey === 'groomerHours' || currentKey === 'unavailability')) {
     return groomerLabel(value);
@@ -272,11 +308,15 @@ function renderTable() {
     renderGroomerBookingsView();
     return;
   }
+  if (resource.custom && currentKey === 'customers') {
+    renderCustomersView();
+    return;
+  }
 
   headEl.innerHTML = `<tr>${resource.columns.map((col) => `<th>${col}</th>`).join('')}<th></th></tr>`;
   bodyEl.innerHTML = rows
     .map((row) => {
-      const cells = resource.columns.map((col) => `<td>${formatCell(col, row[col])}</td>`).join('');
+      const cells = resource.columns.map((col) => `<td>${formatCell(col, row[col], row)}</td>`).join('');
       return `<tr>${cells}<td class="row-actions">
         <button type="button" data-edit="${row.id}">Edit</button>
         <button type="button" class="danger" data-delete="${row.id}">Delete</button>
@@ -423,9 +463,13 @@ async function loadTable() {
     }
     const resource = resources[currentKey];
 
-    if (resource.custom && currentKey === 'groomerBookings') {
+    if (resource.custom && (currentKey === 'groomerBookings' || currentKey === 'customers')) {
       document.getElementById('addBtn').style.display = 'none';
-      renderGroomerBookingsView();
+      if (currentKey === 'groomerBookings') {
+        renderGroomerBookingsView();
+      } else {
+        renderCustomersView();
+      }
       setStatus('');
       return;
     }
@@ -552,6 +596,209 @@ function attachBookingActionHandlers(contentEl, reloadFn) {
       }
     });
   });
+}
+
+function shopInfoHtml(shop, title) {
+  if (!shop) return '';
+  const cls = shop.shopAssigned ? 'shop-panel ok' : 'shop-panel warn';
+  return `<div class="${cls}">
+    <h4>${title}</h4>
+    <p><strong>ClientID:</strong> ${shop.clientId || '(empty)'}</p>
+    <p><strong>RegionId:</strong> ${shop.regionId || '(empty)'}</p>
+    <p><strong>StoreId:</strong> ${shop.storeId || '(empty)'}</p>
+    <p><strong>Summary:</strong> ${shop.shopLabel}</p>
+    ${
+      shop.shopAssigned
+        ? ''
+        : '<p class="shop-hint">Empty tenant — customer will not appear in groomer shop list until these are set.</p>'
+    }
+  </div>`;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function renderCustomersView() {
+  headEl.innerHTML = '';
+  bodyEl.innerHTML = '<tr><td>Loading customers...</td></tr>';
+
+  const query = tenantQuery();
+  let customers = [];
+  try {
+    customers = (await api(`/api/admin/customers${query ? `?${query}` : ''}`)) || [];
+  } catch (error) {
+    bodyEl.innerHTML = `<tr><td>${escapeHtml(error.message)}</td></tr>`;
+    showToast(error.message, 'error');
+    setStatus(error.message, true);
+    return;
+  }
+
+  rows = customers;
+
+  bodyEl.innerHTML = `<tr><td colspan="20">
+    <div class="customers-panel">
+      <p class="panel-note">Uses header tenant filters. Shows customers matching the shop <em>or</em> with empty ClientID/RegionId/StoreId (not assigned).</p>
+      <label>Search customers
+        <input type="search" id="customerSearchInput" placeholder="Name, email, or mobile" />
+      </label>
+      <div id="customersListWrap"></div>
+      <div id="customerDetailWrap" class="customer-detail hidden"></div>
+    </div>
+  </td></tr>`;
+
+  const searchInput = document.getElementById('customerSearchInput');
+  const listWrap = document.getElementById('customersListWrap');
+  const detailWrap = document.getElementById('customerDetailWrap');
+
+  function renderCustomerList() {
+    const term = (searchInput.value || '').trim().toLowerCase();
+    const filtered = customers.filter((item) => {
+      if (!term) return true;
+      return [item.name, item.email, item.mobile, item.shop?.shopLabel]
+        .filter(Boolean)
+        .some((part) => String(part).toLowerCase().includes(term));
+    });
+
+    const tableRows = filtered
+      .map(
+        (item) => `<tr class="customer-row" data-customer-id="${item.id}">
+          <td>${item.id}</td>
+          <td>${escapeHtml(item.name)}</td>
+          <td>${escapeHtml(item.email)}</td>
+          <td>${escapeHtml(item.mobile || '-')}</td>
+          <td>${item.emailVerified ? 'Yes' : 'No'}</td>
+          <td>${escapeHtml(item.clientId || '-')}</td>
+          <td>${escapeHtml(item.regionId || '-')}</td>
+          <td>${escapeHtml(item.storeId || '-')}</td>
+          <td>${
+            item.shop?.shopAssigned
+              ? '<span class="shop-badge ok">Assigned</span>'
+              : '<span class="shop-badge warn">Not assigned</span>'
+          }</td>
+          <td><button type="button" data-view-customer="${item.id}">View</button></td>
+        </tr>`
+      )
+      .join('');
+
+    listWrap.innerHTML = `<table class="customers-table">
+      <thead><tr>
+        <th>ID</th><th>Name</th><th>Email</th><th>Mobile</th><th>Verified</th>
+        <th>ClientID</th><th>RegionId</th><th>StoreId</th><th>Shop</th><th></th>
+      </tr></thead>
+      <tbody>${tableRows || '<tr><td colspan="10">No customers found</td></tr>'}</tbody>
+    </table>`;
+
+    listWrap.querySelectorAll('[data-view-customer]').forEach((button) => {
+      button.addEventListener('click', () => loadCustomerDetail(Number(button.getAttribute('data-view-customer'))));
+    });
+    listWrap.querySelectorAll('.customer-row').forEach((row) => {
+      row.addEventListener('click', (event) => {
+        if (event.target.closest('button')) return;
+        loadCustomerDetail(Number(row.getAttribute('data-customer-id')));
+      });
+    });
+
+    setStatus(`${filtered.length} customer(s)`);
+  }
+
+  async function loadCustomerDetail(userId) {
+    detailWrap.classList.remove('hidden');
+    detailWrap.innerHTML = '<p>Loading customer detail...</p>';
+    try {
+      const data = await api(`/api/admin/customers/${userId}`);
+      const customer = data.customer;
+      const pets = data.pets || [];
+      const bookings = data.bookings || [];
+
+      const petsRows = pets
+        .map(
+          (pet) => `<tr>
+            <td>${pet.id}</td>
+            <td>${escapeHtml(pet.petName)}</td>
+            <td>${escapeHtml(pet.breed || '-')}</td>
+            <td>${escapeHtml(pet.weight || '-')}</td>
+            <td>${escapeHtml(pet.gender || '-')}</td>
+            <td>${escapeHtml(pet.clientId || '-')}</td>
+            <td>${escapeHtml(pet.regionId || '-')}</td>
+            <td>${escapeHtml(pet.storeId || '-')}</td>
+          </tr>`
+        )
+        .join('');
+
+      const bookingRows = bookings
+        .map(
+          (item) => `<tr>
+            <td>${item.bookingId}</td>
+            <td>${escapeHtml(item.status)}</td>
+            <td>${escapeHtml(item.bookingDate)}</td>
+            <td>${escapeHtml(item.startTime)} - ${escapeHtml(item.endTime)}</td>
+            <td>${escapeHtml(item.groomerName || '-')}</td>
+            <td>${escapeHtml(item.pet?.petName || '-')}</td>
+            <td>${escapeHtml(item.serviceName || '-')}</td>
+            <td>${escapeHtml(item.clientId || '-')}</td>
+            <td>${escapeHtml(item.regionId || '-')}</td>
+            <td>${escapeHtml(item.storeId || '-')}</td>
+          </tr>`
+        )
+        .join('');
+
+      detailWrap.innerHTML = `
+        <div class="customer-detail-header">
+          <h3>${escapeHtml(customer.name)} <span class="muted">#${customer.id}</span></h3>
+          <button type="button" class="secondary" id="closeCustomerDetailBtn">Close</button>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-card">
+            <h4>Contact</h4>
+            <p><strong>Email:</strong> ${escapeHtml(customer.email)}</p>
+            <p><strong>Mobile:</strong> ${escapeHtml(customer.mobile || '-')}</p>
+            <p><strong>Email verified:</strong> ${customer.emailVerified ? 'Yes' : 'No'}</p>
+            <p><strong>Registered:</strong> ${customer.createdAt ? escapeHtml(String(customer.createdAt).slice(0, 10)) : '-'}</p>
+          </div>
+          ${shopInfoHtml(customer.shop, 'Customer shop (tenant)')}
+        </div>
+        <section class="booking-section">
+          <h3>Pets (${pets.length})</h3>
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Name</th><th>Breed</th><th>Weight</th><th>Gender</th>
+              <th>ClientID</th><th>RegionId</th><th>StoreId</th>
+            </tr></thead>
+            <tbody>${petsRows || '<tr><td colspan="8">No pets</td></tr>'}</tbody>
+          </table>
+        </section>
+        <section class="booking-section">
+          <h3>Bookings (${bookings.length})</h3>
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Status</th><th>Date</th><th>Time</th><th>Groomer</th><th>Pet</th><th>Service</th>
+              <th>ClientID</th><th>RegionId</th><th>StoreId</th>
+            </tr></thead>
+            <tbody>${bookingRows || '<tr><td colspan="10">No bookings</td></tr>'}</tbody>
+          </table>
+        </section>`;
+
+      document.getElementById('closeCustomerDetailBtn').addEventListener('click', () => {
+        detailWrap.classList.add('hidden');
+        detailWrap.innerHTML = '';
+      });
+
+      listWrap.querySelectorAll('.customer-row').forEach((row) => {
+        row.classList.toggle('selected', Number(row.getAttribute('data-customer-id')) === userId);
+      });
+    } catch (error) {
+      detailWrap.innerHTML = `<p class="empty-bookings">${escapeHtml(error.message)}</p>`;
+      showToast(error.message, 'error');
+    }
+  }
+
+  searchInput.addEventListener('input', renderCustomerList);
+  renderCustomerList();
 }
 
 async function renderGroomerBookingsView() {

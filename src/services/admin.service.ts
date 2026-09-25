@@ -1,4 +1,4 @@
-import { Model, ModelStatic, WhereOptions } from 'sequelize';
+import { Model, ModelStatic, Op, WhereOptions } from 'sequelize';
 import {
   ClientMaster,
   RegionMaster,
@@ -8,7 +8,12 @@ import {
   StoreOperationalHour,
   GroomerWorkingHour,
   GroomerUnavailability,
+  User,
+  Booking,
+  Pet,
 } from '../models';
+import { formatBooking } from './booking.service';
+import { getUserPets } from './pet.service';
 import { NotFoundError, ValidationError } from '../utils/response';
 import { DAYS_OF_WEEK, resolveTenant, TenantInput } from '../utils/schedule';
 
@@ -17,6 +22,35 @@ function tenantFilter(query: TenantInput) {
   if (query.ClientID || query.clientId) tenant.clientId = (query.ClientID || query.clientId) as string;
   if (query.RegionId || query.regionId) tenant.regionId = (query.RegionId || query.regionId) as string;
   if (query.StoreId || query.storeId) tenant.storeId = (query.StoreId || query.storeId) as string;
+  return tenant;
+}
+
+function shopInfo(clientId: string, regionId: string, storeId: string) {
+  const shopAssigned = Boolean(clientId || regionId || storeId);
+  return {
+    clientId: clientId || '',
+    regionId: regionId || '',
+    storeId: storeId || '',
+    shopAssigned,
+    shopLabel: shopAssigned
+      ? `${clientId || '?'}/${regionId || '?'}/${storeId || '?'}`
+      : 'Not assigned',
+  };
+}
+
+function customersWhereFromQuery(query: TenantInput): WhereOptions {
+  const tenant = tenantFilter(query);
+  if (!Object.keys(tenant).length) {
+    return {};
+  }
+  if (tenant.clientId && tenant.regionId && tenant.storeId) {
+    return {
+      [Op.or]: [
+        { clientId: tenant.clientId, regionId: tenant.regionId, storeId: tenant.storeId },
+        { clientId: '', regionId: '', storeId: '' },
+      ],
+    };
+  }
   return tenant;
 }
 
@@ -132,8 +166,74 @@ export async function listGroomers(query: TenantInput) {
   return rows.map((row) => {
     const data = row.toJSON() as Record<string, unknown>;
     delete data.password;
+    data.shop = shopInfo(String(data.clientId || ''), String(data.regionId || ''), String(data.storeId || ''));
     return data;
   });
+}
+
+export async function listCustomers(query: TenantInput) {
+  const users = await User.findAll({
+    where: customersWhereFromQuery(query),
+    order: [['name', 'ASC']],
+    attributes: [
+      'id',
+      'name',
+      'email',
+      'mobile',
+      'emailVerified',
+      'clientId',
+      'regionId',
+      'storeId',
+      'createdAt',
+    ],
+  });
+
+  return users.map((user) => {
+    const data = user.toJSON() as Record<string, unknown>;
+    data.shop = shopInfo(user.clientId, user.regionId, user.storeId);
+    return data;
+  });
+}
+
+export async function getCustomerDetail(userId: number) {
+  const user = await User.findByPk(userId, {
+    attributes: [
+      'id',
+      'name',
+      'email',
+      'mobile',
+      'emailVerified',
+      'clientId',
+      'regionId',
+      'storeId',
+      'createdAt',
+    ],
+  });
+  if (!user) {
+    throw new NotFoundError('Customer not found');
+  }
+
+  const pets = await getUserPets(userId);
+  const bookings = await Booking.findAll({
+    where: { userId },
+    include: [
+      { model: Pet, as: 'pet' },
+      { model: User, as: 'user' },
+    ],
+    order: [
+      ['bookingDate', 'DESC'],
+      ['startTime', 'DESC'],
+    ],
+  });
+
+  return {
+    customer: {
+      ...(user.toJSON() as Record<string, unknown>),
+      shop: shopInfo(user.clientId, user.regionId, user.storeId),
+    },
+    pets,
+    bookings: bookings.map((booking) => formatBooking(booking)),
+  };
 }
 
 export async function createGroomer(body: TenantInput & Record<string, unknown>) {

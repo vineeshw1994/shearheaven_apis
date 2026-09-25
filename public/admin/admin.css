@@ -258,6 +258,138 @@ th { background: #eef4f1; color: var(--muted); font-weight: 700; }
   flex-wrap: wrap;
 }
 
+.shop-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-family: system-ui, sans-serif;
+}
+
+.shop-badge.ok {
+  background: #e7f5ef;
+  color: #245647;
+}
+
+.shop-badge.warn {
+  background: #fdecec;
+  color: #b42318;
+}
+
+.customers-panel {
+  display: grid;
+  gap: 14px;
+  padding: 8px 0;
+  min-width: 0;
+}
+
+.panel-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.customers-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.customers-table th,
+.customers-table td {
+  border: 1px solid var(--line);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 13px;
+}
+
+.customer-row {
+  cursor: pointer;
+}
+
+.customer-row:hover {
+  background: #f7f3ea;
+}
+
+.customer-row.selected {
+  background: #e7f0eb;
+}
+
+.customer-detail {
+  margin-top: 8px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.customer-detail.hidden {
+  display: none;
+}
+
+.customer-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.customer-detail-header h3 {
+  margin: 0;
+}
+
+.customer-detail-header .muted {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.detail-card,
+.shop-panel {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #faf8f3;
+}
+
+.shop-panel.ok {
+  border-color: #b8dccf;
+  background: #f3faf7;
+}
+
+.shop-panel.warn {
+  border-color: #f0c7c3;
+  background: #fff7f6;
+}
+
+.shop-panel h4,
+.detail-card h4 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.shop-panel p,
+.detail-card p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.shop-hint {
+  margin-top: 8px !important;
+  color: var(--danger);
+  font-size: 12px !important;
+}
+
 .groomer-bookings-panel {
   display: grid;
   gap: 16px;
