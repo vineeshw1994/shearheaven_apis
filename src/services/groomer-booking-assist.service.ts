@@ -32,7 +32,7 @@ async function assertCustomerInShop(groomer: GroomerShopContext, userId: number)
   return user;
 }
 
-async function assertCatalogGroomerInShop(
+export async function assertCatalogGroomerInShop(
   groomer: GroomerShopContext,
   catalogGroomerId: number
 ): Promise<void> {

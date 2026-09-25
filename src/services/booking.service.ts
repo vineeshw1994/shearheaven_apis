@@ -76,8 +76,11 @@ function tenantFrom(
   };
 }
 
-async function getGroomerSlotSettings(groomerId: number) {
-  const groomer = await Groomer.findByPk(groomerId);
+async function getGroomerSlotSettings(catalogGroomerId: number) {
+  const catalogGroomer = getCatalogGroomers().find((item) => item.id === catalogGroomerId);
+  const groomer = catalogGroomer
+    ? await Groomer.findOne({ where: { groomerCode: catalogGroomer.code } })
+    : null;
   if (!groomer) {
     return { multiBookingEnabled: false, slotBookingLimit: 1 };
   }
@@ -366,6 +369,9 @@ export async function createBookingByGroomer(
 ): Promise<{
   bookingId: number;
   status: string;
+  groomerId: number;
+  groomerCode: string;
+  groomerName: string;
   totalDurationMinutes: number;
   totalPrice: number;
 }> {
@@ -382,15 +388,17 @@ export async function createBookingByGroomer(
     throw new ForbiddenError('Pet does not belong to the selected user');
   }
 
+  const targetCatalogGroomerId = input.groomerId && input.groomerId > 0 ? input.groomerId : groomerCatalogId;
+  const catalogGroomer = getGroomerById(targetCatalogGroomerId);
+
   const bookingInput: CreateBookingInput = {
     ...input,
-    groomerId: groomerCatalogId,
+    groomerId: targetCatalogGroomerId,
   };
 
   const workingHours = assertStoreIsOpen(bookingInput.bookingDate);
   const quote = calculateQuote(bookingInput.serviceId, bookingInput.packageId, bookingInput.addOnIds || []);
-  const groomerId = groomerCatalogId;
-  getGroomerById(groomerId);
+  const groomerId = targetCatalogGroomerId;
   const slotSettings = await getGroomerSlotSettings(groomerId);
 
   const startMinutes = timeToMinutes(bookingInput.startTime);
@@ -452,6 +460,9 @@ export async function createBookingByGroomer(
   return {
     bookingId: booking.id,
     status: booking.status,
+    groomerId: catalogGroomer.id,
+    groomerCode: catalogGroomer.code,
+    groomerName: catalogGroomer.name,
     totalDurationMinutes: booking.totalDurationMinutes,
     totalPrice: Number(booking.totalPrice),
   };

@@ -34,6 +34,7 @@ const groomerCreateBookingSchema = Joi.object({
   serviceId: Joi.number().integer().positive().required(),
   packageId: Joi.number().integer().positive().allow(null).optional(),
   addOnIds: Joi.array().items(Joi.number().integer().positive()).optional(),
+  groomerId: Joi.number().integer().positive().required(),
   bookingDate: Joi.string().required(),
   startTime: Joi.string().required(),
   endTime: Joi.string().required(),
@@ -318,7 +319,8 @@ export async function registerDeviceToken(req: GroomerAuthRequest, res: Response
 export async function createBookingForUser(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const data = validateBody<bookingService.GroomerCreateBookingInput>(groomerCreateBookingSchema, req.body);
-    const booking = await bookingService.createBookingByGroomer(req.groomer!.id, data, {
+    await groomerBookingAssistService.assertCatalogGroomerInShop(req.groomer!, data.groomerId);
+    const booking = await bookingService.createBookingByGroomer(data.groomerId, data, {
       clientId: req.groomer!.clientId,
       regionId: req.groomer!.regionId,
       storeId: req.groomer!.storeId,

@@ -1008,14 +1008,14 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"userId\": 1,\n  \"petId\": {{petId}},\n  \"serviceId\": 12,\n  \"packageId\": 1,\n  \"addOnIds\": [2],\n  \"bookingDate\": \"2026-08-25\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
+              "raw": "{\n  \"userId\": 1,\n  \"petId\": {{petId}},\n  \"serviceId\": 12,\n  \"packageId\": 1,\n  \"addOnIds\": [2],\n  \"groomerId\": 1,\n  \"bookingDate\": \"2026-08-25\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"11:00\",\n  \"clientId\": \"SHEAR-001\",\n  \"regionId\": \"DWG-001\",\n  \"storeId\": \"SHEAR-001\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/groomer-auth/bookings/create-for-user",
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "create-for-user"]
             },
-            "description": "Groomer creates a confirmed booking on behalf of a user.\n\n**Side effects:** Customer notification (`type: booking_confirmed`) via DB + **Firebase push** + Socket.IO to the customer."
+            "description": "Groomer creates a confirmed booking on behalf of a user.\n\n**Required `groomerId`:** catalog ID from **List Shop Groomers** (1=G001 Merisa, 2=G002 Richard, 3=G003 Tracie, 4=B001 bather). Must match availability slot groomer. Can book for self or another shop groomer.\n\n**Response** includes `groomerId`, `groomerCode`, `groomerName`.\n\n**Side effects:** Customer notification (`type: booking_confirmed`) via DB + **Firebase push** + Socket.IO to the customer."
           }
         }
       ]
