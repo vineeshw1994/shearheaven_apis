@@ -1015,7 +1015,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "groomer-auth", "bookings", "create-for-user"]
             },
-            "description": "Groomer creates a confirmed booking on behalf of a user.\n\n**Required `groomerId`:** catalog ID from **List Shop Groomers** (1=G001 Merisa, 2=G002 Richard, 3=G003 Tracie, 4=B001 bather). Must match availability slot groomer. Can book for self or another shop groomer.\n\n**Response** includes `groomerId`, `groomerCode`, `groomerName`.\n\n**Side effects:** Customer notification (`type: booking_confirmed`) via DB + **Firebase push** + Socket.IO to the customer."
+            "description": "Groomer creates a booking on behalf of a user. Status starts as **`pending`**; the assigned groomer must **Approve Booking** → `confirmed` (same as customer-created bookings).\n\n**Required `groomerId`:** catalog ID from **List Shop Groomers** (1=G001 Merisa, 2=G002 Richard, 3=G003 Tracie, 4=B001 bather). Must match availability slot groomer.\n\n**Response** includes `groomerId`, `groomerCode`, `groomerName`, `status: pending`.\n\n**Side effects:** Customer + assigned groomer notifications (`type: booking_created`), booking email to customer, Firebase push + Socket.IO."
           }
         }
       ]

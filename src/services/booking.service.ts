@@ -446,7 +446,7 @@ export async function createBookingByGroomer(
     bookingDate: bookingInput.bookingDate,
     startTime: bookingInput.startTime,
     endTime,
-    status: 'confirmed',
+    status: 'pending',
     totalDurationMinutes: quote.totalDurationMinutes,
     totalPrice: quote.totalPrice,
     clientId: tenant.clientId,
@@ -454,8 +454,8 @@ export async function createBookingByGroomer(
     storeId: tenant.storeId,
   });
 
-  const { runBookingNotification, notifyBookingCreatedByGroomer } = await import('./booking-notification.service');
-  runBookingNotification(() => notifyBookingCreatedByGroomer(booking.id), 'booking_created_by_groomer');
+  const { runBookingNotification, notifyBookingCreated } = await import('./booking-notification.service');
+  runBookingNotification(() => notifyBookingCreated(booking.id), 'booking_created_by_groomer');
 
   return {
     bookingId: booking.id,
