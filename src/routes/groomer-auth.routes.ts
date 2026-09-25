@@ -11,6 +11,12 @@ router.get('/profile', authenticateGroomer, groomerAuthController.getProfile);
 router.put('/profile', authenticateGroomer, groomerAuthController.updateProfile);
 router.post('/device-token', authenticateGroomer, groomerAuthController.registerDeviceToken);
 
+router.get('/customers', authenticateGroomer, groomerAuthController.listShopCustomers);
+router.get('/customers/:userId/pets', authenticateGroomer, groomerAuthController.listShopCustomerPets);
+router.get('/groomers', authenticateGroomer, groomerAuthController.listShopGroomers);
+router.get('/groomers/:groomerId/availability', authenticateGroomer, groomerAuthController.getShopGroomerAvailability);
+router.post('/groomers/:groomerId/availability', authenticateGroomer, groomerAuthController.getShopGroomerAvailability);
+
 router.get('/bookings/pending', authenticateGroomer, groomerAuthController.getPendingBookings);
 router.get('/bookings/upcoming', authenticateGroomer, groomerAuthController.getUpcomingBookings);
 router.get('/bookings/past', authenticateGroomer, groomerAuthController.getPastBookings);

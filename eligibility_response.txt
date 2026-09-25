@@ -1,0 +1,67 @@
+Payload
+
+{
+  controlNumber: "270403884",
+  tradingPartnerServiceId: "00283",
+  provider: {
+    firstName: "PEIYI",
+    middleName: null,
+    lastName: " CHENG",
+    npi: "1962880732",
+  },
+  subscriber: {
+    firstName: "Anbu",
+    lastName: "Kumar",
+    dateOfBirth: "20080831",
+    memberId: "868757635635",
+  },
+  encounter: {
+    dateOfService: "20260924",
+    serviceTypeCodes: [
+      "17",
+    ],
+  },
+}
+
+
+
+Response 
+
+{
+  status: 200,
+  statusText: "OK",
+  data: {
+    errors: [
+      {
+        description: "Please use predefined canned users for non-prod environments: lastName was not predefined.",
+        field: "subscriber",
+      },
+      {
+        code: "75",
+        description: "Subscriber/Insured Not Found",
+        field: "AAA",
+        followupAction: "Please Correct and Resubmit",
+        location: "Loop 2100C",
+      },
+      {
+        code: "73",
+        description: "Invalid/Missing Subscriber/Insured Name",
+        field: "AAA",
+        followupAction: "Please Correct and Resubmit",
+        location: "Loop 2100C",
+      },
+      {
+        code: "71",
+        description: "Patient Birth Date Does Not Match That for the Patient on the Database",
+        field: "AAA",
+        followupAction: "Please Correct and Resubmit",
+        location: "Loop 2100C",
+      },
+    ],
+    meta: {
+      senderId: "APIM_Marketplace_SBX_Native_1E7KwGOXRNfTzprf",
+      applicationMode: "sandbox",
+      traceId: "b78f892b-2dec-3688-3596-b2c653b515c8",
+    },
+  },
+}

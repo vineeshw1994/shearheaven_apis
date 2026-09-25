@@ -5,6 +5,8 @@ import { validateBody } from '../utils/validation';
 import { GroomerAuthRequest } from '../types/groomer';
 import * as bookingService from '../services/booking.service';
 import * as notificationService from '../services/notification.service';
+import * as groomerBookingAssistService from '../services/groomer-booking-assist.service';
+import { AvailabilityInput } from '../services/booking.service';
 import Joi from 'joi';
 
 const loginSchema = Joi.object({
@@ -45,6 +47,46 @@ const deviceTokenSchema = Joi.object({
   pushToken: Joi.string().trim().required(),
   platform: Joi.string().valid('android', 'ios', 'web').optional(),
 });
+
+const shopCustomerListQuerySchema = Joi.object({
+  search: Joi.string().trim().max(100).allow('').optional(),
+  limit: Joi.number().integer().min(1).max(100).optional(),
+  offset: Joi.number().integer().min(0).optional(),
+});
+
+const groomerShopAvailabilitySchema = Joi.object({
+  date: Joi.string()
+    .pattern(/^\d{4}-\d{2}-\d{2}$/)
+    .required()
+    .messages({
+      'string.pattern.base': 'date must be in YYYY-MM-DD format',
+    }),
+  serviceId: Joi.number().integer().positive().required(),
+  packageId: Joi.number().integer().positive().allow(null).optional(),
+  addOnIds: Joi.array().items(Joi.number().integer().positive()).default([]),
+  clientId: Joi.string().optional(),
+  regionId: Joi.string().optional(),
+  storeId: Joi.string().optional(),
+  ClientId: Joi.string().optional(),
+  RegionId: Joi.string().optional(),
+  StoreId: Joi.string().optional(),
+});
+
+function parseAvailabilityQuery(req: GroomerAuthRequest): Record<string, unknown> {
+  const queryAddOnIds = req.query.addOnIds;
+  return {
+    ...req.query,
+    ...req.body,
+    addOnIds:
+      req.body?.addOnIds ||
+      (typeof queryAddOnIds === 'string'
+        ? queryAddOnIds.split(',').filter(Boolean).map((id: string) => Number(id))
+        : queryAddOnIds),
+    serviceId: req.body?.serviceId || req.query.serviceId,
+    packageId: req.body?.packageId ?? req.query.packageId,
+    date: req.body?.date || req.query.date,
+  };
+}
 
 const profileUpdateSchema = Joi.object({
   firstName: Joi.string().trim().max(100).optional(),
@@ -201,6 +243,60 @@ export async function refreshToken(req: GroomerAuthRequest, res: Response, next:
     const { refreshToken } = validateBody<{ refreshToken: string }>(refreshSchema, req.body);
     const result = await groomerAuthService.refreshGroomerAccessToken(refreshToken);
     sendSuccess(res, 'Groomer access token refreshed successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listShopCustomers(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const query = validateBody<{ search?: string; limit?: number; offset?: number }>(
+      shopCustomerListQuerySchema,
+      req.query
+    );
+    const result = await groomerBookingAssistService.listShopCustomers(req.groomer!, query);
+    sendSuccess(res, 'Customers retrieved successfully', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listShopCustomerPets(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const userId = Number(req.params.userId);
+    const pets = await groomerBookingAssistService.listShopCustomerPets(req.groomer!, userId);
+    sendSuccess(res, 'Customer pets retrieved successfully', pets);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listShopGroomers(req: GroomerAuthRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const groomers = await groomerBookingAssistService.listShopGroomers(req.groomer!);
+    sendSuccess(res, 'Shop groomers retrieved successfully', groomers);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getShopGroomerAvailability(
+  req: GroomerAuthRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const catalogGroomerId = Number(req.params.groomerId);
+    const data = validateBody<Omit<AvailabilityInput, 'groomerId'>>(
+      groomerShopAvailabilitySchema,
+      parseAvailabilityQuery(req)
+    );
+    const availability = await groomerBookingAssistService.getShopGroomerAvailability(
+      req.groomer!,
+      catalogGroomerId,
+      data
+    );
+    sendSuccess(res, 'Groomer availability retrieved successfully', availability);
   } catch (error) {
     next(error);
   }
